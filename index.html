@@ -1,257 +1,124 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeoChat • AI Terminal</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NeoChat — DeepSeek AI Terminal</title>
+  <link rel="stylesheet" href="./style.css" />
+  <!-- Telegram Web Apps SDK (будет доступен внутри Telegram) -->
+  <script async src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-<body>
-    <div class="app-container">
-        <!-- Боковая панель -->
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <i class="fas fa-terminal"></i>
-                    <span>NeoChat</span>
-                </div>
-                <button id="menuBtn" class="icon-btn">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </div>
+<body data-theme="dark">
+  <div id="app" class="app-container" role="application" aria-label="NeoChat AI Terminal">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" aria-hidden="false">
+      <div class="sidebar-top">
+        <div class="logo" title="NeoChat">
+          <svg class="logo-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v12H3z"></path></svg>
+          <span class="logo-text">NeoChat</span>
+        </div>
+        <div class="api-status" id="apiStatus">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Disconnected</span>
+        </div>
+      </div>
 
-            <div class="conversation-list">
-                <div class="conv-item active">
-                    <i class="fas fa-message"></i>
-                    <span>Сегодняшний диалог</span>
-                </div>
-                <div class="conv-item">
-                    <i class="fas fa-code"></i>
-                    <span>Программирование</span>
-                </div>
-                <div class="conv-item">
-                    <i class="fas fa-lightbulb"></i>
-                    <span>Креатив</span>
-                </div>
-                <div class="conv-item">
-                    <i class="fas fa-gear"></i>
-                    <span>Настройки</span>
-                </div>
-            </div>
+      <nav class="conversations" aria-label="Список диалогов" id="conversationList">
+        <!-- sample items for UI -->
+      </nav>
 
-            <div class="api-status">
-                <div class="status-indicator" id="apiStatusLight"></div>
-                <span id="apiStatusText">API не настроен</span>
-            </div>
+      <div class="sidebar-actions">
+        <button id="btnOpenSettings" class="btn">Настройки</button>
+        <button id="btnClearHistory" class="btn danger">Очистить историю</button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content" id="mainContent">
+      <header class="chat-header">
+        <div class="header-left">
+          <h1 id="chatTitle">DeepSeek AI</h1>
+          <small id="appVersion">v1.0</small>
+        </div>
+        <div class="header-actions">
+          <button id="btnThemeToggle" class="icon-btn" aria-label="Переключить тему">Тема</button>
+          <button id="btnSettings" class="icon-btn" aria-label="Открыть настройки">⚙️</button>
+        </div>
+      </header>
+
+      <section class="chat-view" id="chatView" aria-live="polite">
+        <div id="messages" class="messages" role="log" aria-relevant="additions"></div>
+      </section>
+
+      <section class="input-area" aria-label="Поле ввода">
+        <div class="quick-buttons" id="quickButtons" role="toolbar" aria-label="Быстрые кнопки">
+          <button class="quick-btn" data-mode="code">Код</button>
+          <button class="quick-btn" data-mode="explain">Объясни</button>
+          <button class="quick-btn" data-mode="translate">Переведи</button>
         </div>
 
-        <!-- Основной чат -->
-        <div class="main-content">
-            <!-- Шапка -->
-            <header class="chat-header">
-                <div class="header-left">
-                    <h1><i class="fas fa-robot"></i> DeepSeek AI</h1>
-                    <div class="model-badge">v1.0</div>
-                </div>
-                <div class="header-actions">
-                    <button id="settingsBtn" class="icon-btn primary">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                    <button id="clearBtn" class="icon-btn secondary">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </header>
-
-            <!-- История сообщений -->
-            <div class="chat-messages" id="messagesContainer">
-                <div class="message ai-message">
-                    <div class="avatar">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="content">
-                        <div class="sender">DeepSeek AI</div>
-                        <div class="text">Привет! Я готов помочь с программированием, анализом текста или креативными задачами. Чем могу быть полезен?</div>
-                        <div class="time">только что</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Поле ввода -->
-            <div class="input-area">
-                <div class="input-wrapper">
-                    <input type="text" 
-                           id="messageInput" 
-                           placeholder="Напишите сообщение..." 
-                           maxlength="1000"
-                           autocomplete="off">
-                    <div class="input-actions">
-                        <button id="sendBtn" class="send-btn">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Адаптивная клавиатура -->
-                <div class="virtual-keyboard" id="keyboard">
-                    <div class="keyboard-row">
-                        <button class="key" data-key="q">Q</button>
-                        <button class="key" data-key="w">W</button>
-                        <button class="key" data-key="e">E</button>
-                        <button class="key" data-key="r">R</button>
-                        <button class="key" data-key="t">T</button>
-                        <button class="key" data-key="y">Y</button>
-                        <button class="key" data-key="u">U</button>
-                        <button class="key" data-key="i">I</button>
-                        <button class="key" data-key="o">O</button>
-                        <button class="key" data-key="p">P</button>
-                    </div>
-                    <div class="keyboard-row">
-                        <div class="keyboard-spacer"></div>
-                        <button class="key" data-key="a">A</button>
-                        <button class="key" data-key="s">S</button>
-                        <button class="key" data-key="d">D</button>
-                        <button class="key" data-key="f">F</button>
-                        <button class="key" data-key="g">G</button>
-                        <button class="key" data-key="h">H</button>
-                        <button class="key" data-key="j">J</button>
-                        <button class="key" data-key="k">K</button>
-                        <button class="key" data-key="l">L</button>
-                        <div class="keyboard-spacer"></div>
-                    </div>
-                    <div class="keyboard-row">
-                        <button class="key special" data-key="shift">
-                            <i class="fas fa-arrow-up"></i>
-                        </button>
-                        <button class="key" data-key="z">Z</button>
-                        <button class="key" data-key="x">X</button>
-                        <button class="key" data-key="c">C</button>
-                        <button class="key" data-key="v">V</button>
-                        <button class="key" data-key="b">B</button>
-                        <button class="key" data-key="n">N</button>
-                        <button class="key" data-key="m">M</button>
-                        <button class="key special backspace" data-key="backspace">
-                            <i class="fas fa-delete-left"></i>
-                        </button>
-                    </div>
-                    <div class="keyboard-row">
-                        <button class="key special" data-key="numbers">123</button>
-                        <button class="key" data-key=",">,</button>
-                        <button class="key space" data-key="space">
-                            <span>ПРОБЕЛ</span>
-                        </button>
-                        <button class="key" data-key=".">.</button>
-                        <button class="key special enter" data-key="enter">
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="quick-actions">
-                    <button class="quick-btn" data-text="Напиши код на Python">
-                        <i class="fas fa-code"></i> Код
-                    </button>
-                    <button class="quick-btn" data-text="Объясни понятным языком">
-                        <i class="fas fa-graduation-cap"></i> Объясни
-                    </button>
-                    <button class="quick-btn" data-text="Переведи на английский">
-                        <i class="fas fa-language"></i> Переведи
-                    </button>
-                </div>
-            </div>
+        <div class="input-row">
+          <textarea id="inputField" class="input-field" rows="1" placeholder="Напишите сообщение..." aria-label="Сообщение"></textarea>
+          <button id="sendBtn" class="btn primary" aria-label="Отправить">Отправить</button>
         </div>
+
+        <!-- Virtual keyboard -->
+        <div id="virtualKeyboard" class="virtual-keyboard" aria-hidden="false" role="application">
+          <!-- rows added by JS -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settingsModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-card">
+      <header class="modal-header">
+        <h2 id="settingsTitle">Настройки</h2>
+        <button class="modal-close" id="closeSettings" aria-label="Закрыть">✕</button>
+      </header>
+
+      <section class="modal-body">
+        <label class="field">
+          <span>DeepSeek API Key</span>
+          <input id="apiKeyInput" type="password" placeholder="sk-..." aria-label="API ключ DeepSeek" />
+        </label>
+
+        <div class="field">
+          <button id="testApiBtn" class="btn">Проверить ключ</button>
+          <span id="testApiResult" class="muted"></span>
+        </div>
+
+        <div class="field">
+          <span>Тема оформления</span>
+          <div class="theme-options">
+            <button class="theme-btn" data-theme="dark">Тёмная</button>
+            <button class="theme-btn" data-theme="light">Светлая</button>
+            <button class="theme-btn" data-theme="blue">Синяя</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label><input id="toggleKeyboardSound" type="checkbox" /> Звук клавиатуры</label>
+        </div>
+      </section>
+
+      <footer class="modal-footer">
+        <button id="saveSettings" class="btn primary">Сохранить</button>
+      </footer>
     </div>
+  </div>
 
-    <!-- Модальное окно настроек -->
-    <div class="modal" id="settingsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-sliders"></i> Настройки</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="settings-section">
-                    <h3><i class="fas fa-key"></i> API Настройки</h3>
-                    <div class="form-group">
-                        <label for="apiKeyInput">DeepSeek API Ключ</label>
-                        <div class="input-with-action">
-                            <input type="password" 
-                                   id="apiKeyInput" 
-                                   placeholder="sk-..."
-                                   value="">
-                            <button type="button" id="toggleKeyBtn" class="icon-btn small">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <p class="help-text">
-                            Получите ключ на 
-                            <a href="https://platform.deepseek.com/api_keys" target="_blank">
-                                platform.deepseek.com
-                            </a>
-                        </p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Проверка API</label>
-                        <button id="testApiBtn" class="btn test-btn">
-                            <i class="fas fa-vial"></i> Проверить соединение
-                        </button>
-                        <div id="apiTestResult" class="test-result"></div>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3><i class="fas fa-palette"></i> Внешний вид</h3>
-                    <div class="form-group">
-                        <label>Тема оформления</label>
-                        <div class="theme-selector">
-                            <button class="theme-option active" data-theme="dark">
-                                <div class="theme-preview dark"></div>
-                                <span>Тёмная</span>
-                            </button>
-                            <button class="theme-option" data-theme="light">
-                                <div class="theme-preview light"></div>
-                                <span>Светлая</span>
-                            </button>
-                            <button class="theme-option" data-theme="blue">
-                                <div class="theme-preview blue"></div>
-                                <span>Синяя</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3><i class="fas fa-keyboard"></i> Клавиатура</h3>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="toggleKeyboard" checked>
-                            <span class="checkmark"></span>
-                            Показывать виртуальную клавиатуру
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="keyboardSound" checked>
-                            <span class="checkmark"></span>
-                            Звук нажатия клавиш
-                        </label>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button id="saveSettingsBtn" class="btn primary-btn">
-                        <i class="fas fa-save"></i> Сохранить настройки
-                    </button>
-                    <button id="closeSettingsBtn" class="btn secondary-btn">
-                        Отмена
-                    </button>
-                </div>
-            </div>
-        </div>
+  <template id="messageTemplate">
+    <div class="message">
+      <div class="avatar"></div>
+      <div class="bubble">
+        <div class="meta"></div>
+        <div class="text"></div>
+      </div>
     </div>
+  </template>
 
-    <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
