@@ -1,124 +1,287 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NeoChat — DeepSeek AI Terminal</title>
-  <link rel="stylesheet" href="./style.css" />
-  <!-- Telegram Web Apps SDK (будет доступен внутри Telegram) -->
-  <script async src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant • Telegram Mini App</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* Стили для красивого скроллбара */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.5); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.8); }
+    </style>
 </head>
-<body data-theme="dark">
-  <div id="app" class="app-container" role="application" aria-label="NeoChat AI Terminal">
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar" aria-hidden="false">
-      <div class="sidebar-top">
-        <div class="logo" title="NeoChat">
-          <svg class="logo-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v12H3z"></path></svg>
-          <span class="logo-text">NeoChat</span>
+<body>
+    <div class="app-container">
+        <!-- Основной чат -->
+        <div class="chat-container">
+            <!-- Шапка -->
+            <header class="chat-header">
+                <div class="header-left">
+                    <div class="logo">
+                        <i class="fas fa-robot"></i>
+                        <h1>AI Assistant</h1>
+                    </div>
+                    <div class="status-indicator" id="apiStatusIndicator">
+                        <div class="status-dot"></div>
+                        <span id="statusText">Подключение...</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="clearChatBtn" class="icon-btn" title="Очистить чат">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button id="settingsBtn" class="icon-btn primary" title="Настройки">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- История сообщений -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- Сообщения будут добавляться здесь динамически -->
+                <div class="message ai-welcome">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-sender">AI Assistant</div>
+                        <div class="message-text">
+                            👋 Привет! Я ваш AI-помощник. <br><br>
+                            🔑 <strong>Чтобы начать:</strong><br>
+                            1. Нажмите на <i class="fas fa-cog"></i> в правом верхнем углу<br>
+                            2. Введите ваш API ключ в настройках<br>
+                            3. Нажмите "Сохранить настройки"<br><br>
+                            💡 <strong>Поддерживаются:</strong><br>
+                            • DeepSeek API<br>
+                            • OpenAI API<br>
+                            • И другие совместимые API
+                        </div>
+                        <div class="message-time">только что</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Поле ввода -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Введите ваш запрос здесь..." 
+                        rows="1"
+                        maxlength="4000"
+                        autocomplete="off"
+                        spellcheck="true"></textarea>
+                    <div class="input-actions">
+                        <button id="sendButton" class="send-button" title="Отправить (Ctrl+Enter)">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="input-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Нажмите Enter для отправки, Shift+Enter для новой строки
+                </div>
+            </div>
         </div>
-        <div class="api-status" id="apiStatus">
-          <span class="status-dot" id="statusDot"></span>
-          <span id="statusText">Disconnected</span>
-        </div>
-      </div>
-
-      <nav class="conversations" aria-label="Список диалогов" id="conversationList">
-        <!-- sample items for UI -->
-      </nav>
-
-      <div class="sidebar-actions">
-        <button id="btnOpenSettings" class="btn">Настройки</button>
-        <button id="btnClearHistory" class="btn danger">Очистить историю</button>
-      </div>
-    </aside>
-
-    <!-- Main content -->
-    <main class="main-content" id="mainContent">
-      <header class="chat-header">
-        <div class="header-left">
-          <h1 id="chatTitle">DeepSeek AI</h1>
-          <small id="appVersion">v1.0</small>
-        </div>
-        <div class="header-actions">
-          <button id="btnThemeToggle" class="icon-btn" aria-label="Переключить тему">Тема</button>
-          <button id="btnSettings" class="icon-btn" aria-label="Открыть настройки">⚙️</button>
-        </div>
-      </header>
-
-      <section class="chat-view" id="chatView" aria-live="polite">
-        <div id="messages" class="messages" role="log" aria-relevant="additions"></div>
-      </section>
-
-      <section class="input-area" aria-label="Поле ввода">
-        <div class="quick-buttons" id="quickButtons" role="toolbar" aria-label="Быстрые кнопки">
-          <button class="quick-btn" data-mode="code">Код</button>
-          <button class="quick-btn" data-mode="explain">Объясни</button>
-          <button class="quick-btn" data-mode="translate">Переведи</button>
-        </div>
-
-        <div class="input-row">
-          <textarea id="inputField" class="input-field" rows="1" placeholder="Напишите сообщение..." aria-label="Сообщение"></textarea>
-          <button id="sendBtn" class="btn primary" aria-label="Отправить">Отправить</button>
-        </div>
-
-        <!-- Virtual keyboard -->
-        <div id="virtualKeyboard" class="virtual-keyboard" aria-hidden="false" role="application">
-          <!-- rows added by JS -->
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- Settings modal -->
-  <div id="settingsModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-    <div class="modal-card">
-      <header class="modal-header">
-        <h2 id="settingsTitle">Настройки</h2>
-        <button class="modal-close" id="closeSettings" aria-label="Закрыть">✕</button>
-      </header>
-
-      <section class="modal-body">
-        <label class="field">
-          <span>DeepSeek API Key</span>
-          <input id="apiKeyInput" type="password" placeholder="sk-..." aria-label="API ключ DeepSeek" />
-        </label>
-
-        <div class="field">
-          <button id="testApiBtn" class="btn">Проверить ключ</button>
-          <span id="testApiResult" class="muted"></span>
-        </div>
-
-        <div class="field">
-          <span>Тема оформления</span>
-          <div class="theme-options">
-            <button class="theme-btn" data-theme="dark">Тёмная</button>
-            <button class="theme-btn" data-theme="light">Светлая</button>
-            <button class="theme-btn" data-theme="blue">Синяя</button>
-          </div>
-        </div>
-
-        <div class="field">
-          <label><input id="toggleKeyboardSound" type="checkbox" /> Звук клавиатуры</label>
-        </div>
-      </section>
-
-      <footer class="modal-footer">
-        <button id="saveSettings" class="btn primary">Сохранить</button>
-      </footer>
     </div>
-  </div>
 
-  <template id="messageTemplate">
-    <div class="message">
-      <div class="avatar"></div>
-      <div class="bubble">
-        <div class="meta"></div>
-        <div class="text"></div>
-      </div>
+    <!-- Модальное окно настроек -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2><i class="fas fa-sliders-h"></i> Настройки AI Assistant</h2>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Секция API -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-key"></i> Настройки API</h3>
+                    
+                    <div class="setting-item">
+                        <label for="apiProvider">Провайдер API</label>
+                        <select id="apiProvider" class="setting-select">
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="custom">Другой (Custom)</option>
+                        </select>
+                        <div class="setting-description">
+                            Выберите провайдера AI API
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="apiKey">API Ключ</label>
+                        <div class="input-with-button">
+                            <input 
+                                type="password" 
+                                id="apiKey" 
+                                placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                autocomplete="off">
+                            <button type="button" id="toggleKeyBtn" class="small-button">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="setting-description">
+                            <i class="fas fa-external-link-alt"></i>
+                            <a href="https://platform.deepseek.com/api_keys" target="_blank" class="link">
+                                Получить DeepSeek ключ
+                            </a> • 
+                            <a href="https://platform.openai.com/api-keys" target="_blank" class="link">
+                                Получить OpenAI ключ
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="apiUrl">URL API (для Custom)</label>
+                        <input 
+                            type="text" 
+                            id="apiUrl" 
+                            placeholder="https://api.deepseek.com/v1"
+                            class="setting-input">
+                        <div class="setting-description">
+                            Оставьте пустым для автоматической настройки
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="apiModel">Модель AI</label>
+                        <input 
+                            type="text" 
+                            id="apiModel" 
+                            placeholder="deepseek-chat"
+                            class="setting-input">
+                        <div class="setting-description">
+                            Например: deepseek-chat, gpt-3.5-turbo, gpt-4
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="maxTokens">Макс. длина ответа</label>
+                        <div class="range-container">
+                            <input 
+                                type="range" 
+                                id="maxTokens" 
+                                min="100" 
+                                max="4000" 
+                                step="100" 
+                                value="2000">
+                            <span id="tokensValue">2000 токенов</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-actions">
+                        <button id="testApiBtn" class="button secondary">
+                            <i class="fas fa-vial"></i> Проверить соединение
+                        </button>
+                        <div id="apiTestResult" class="test-result"></div>
+                    </div>
+                </div>
+
+                <!-- Секция интерфейса -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-paint-brush"></i> Внешний вид</h3>
+                    
+                    <div class="setting-item">
+                        <label>Тема оформления</label>
+                        <div class="theme-selector">
+                            <div class="theme-option active" data-theme="dark">
+                                <div class="theme-preview dark-theme">
+                                    <div class="theme-header"></div>
+                                    <div class="theme-content"></div>
+                                </div>
+                                <span>Тёмная</span>
+                            </div>
+                            <div class="theme-option" data-theme="light">
+                                <div class="theme-preview light-theme">
+                                    <div class="theme-header"></div>
+                                    <div class="theme-content"></div>
+                                </div>
+                                <span>Светлая</span>
+                            </div>
+                            <div class="theme-option" data-theme="blue">
+                                <div class="theme-preview blue-theme">
+                                    <div class="theme-header"></div>
+                                    <div class="theme-content"></div>
+                                </div>
+                                <span>Синяя</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="autoScroll" checked>
+                            <span class="checkmark"></span>
+                            <span class="checkbox-label">Автопрокрутка к новым сообщениям</span>
+                        </label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="showTimestamps" checked>
+                            <span class="checkmark"></span>
+                            <span class="checkbox-label">Показывать время сообщений</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Секция дополнительно -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-tools"></i> Дополнительно</h3>
+                    
+                    <div class="setting-item">
+                        <label for="systemPrompt">Системный промпт</label>
+                        <textarea 
+                            id="systemPrompt" 
+                            rows="3" 
+                            placeholder="Вы - полезный AI-ассистент. Отвечайте на русском языке..."
+                            class="setting-textarea"></textarea>
+                        <div class="setting-description">
+                            Системное сообщение для AI (опционально)
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="temperature">Температура</label>
+                        <div class="range-container">
+                            <input 
+                                type="range" 
+                                id="temperature" 
+                                min="0" 
+                                max="1" 
+                                step="0.1" 
+                                value="0.7">
+                            <span id="tempValue">0.7 (баланс)</span>
+                        </div>
+                        <div class="setting-description">
+                            0.0 = точность, 1.0 = креативность
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="saveSettingsBtn" class="button primary">
+                    <i class="fas fa-save"></i> Сохранить настройки
+                </button>
+                <button id="cancelSettingsBtn" class="button secondary">
+                    Отмена
+                </button>
+            </div>
+        </div>
     </div>
-  </template>
 
-  <script src="./app.js"></script>
+    <!-- Уведомления -->
+    <div id="notificationContainer"></div>
+
+    <script src="app.js"></script>
 </body>
 </html>
