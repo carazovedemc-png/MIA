@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro AI Terminal</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Основной контейнер -->
+    <div class="retro-terminal">
+        <!-- Верхняя панель с шестерёнкой -->
+        <div class="terminal-header">
+            <div class="header-left">
+                <span class="blinking-cursor">_</span>
+                <span class="status-text">RETRO AI TERMINAL v1.0</span>
+            </div>
+            <div class="header-right">
+                <button id="settingsBtn" class="gear-btn">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Монитор (экран консоли) -->
+        <div class="monitor-screen">
+            <div class="crt-effect">
+                <div class="scanlines"></div>
+                <div id="consoleOutput" class="console-output">
+                    <div class="system-message">
+                        <span class="prompt">></span> ДОБРО ПОЖАЛОВАТЬ В RETRO AI TERMINAL
+                    </div>
+                    <div class="system-message">
+                        <span class="prompt">></span> Система инициализирована: <span class="success-text">OK</span>
+                    </div>
+                    <div class="system-message">
+                        <span class="prompt">></span> DeepSeek API: <span id="apiStatus" class="error-text">НЕ НАСТРОЕН</span>
+                    </div>
+                    <div class="system-message">
+                        <span class="prompt">></span> Введите запрос и нажмите ENTER...
+                    </div>
+                </div>
+                <div class="input-line">
+                    <span class="prompt">></span>
+                    <input type="text" id="aiInput" class="console-input" placeholder="Введите ваш запрос..." maxlength="200">
+                    <span class="typing-cursor">|</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ретро-клавиатура -->
+        <div class="retro-keyboard">
+            <div class="keyboard-row">
+                <button class="key" data-key="1">1</button>
+                <button class="key" data-key="2">2</button>
+                <button class="key" data-key="3">3</button>
+                <button class="key" data-key="4">4</button>
+                <button class="key" data-key="5">5</button>
+                <button class="key" data-key="6">6</button>
+                <button class="key" data-key="7">7</button>
+                <button class="key" data-key="8">8</button>
+                <button class="key" data-key="9">9</button>
+                <button class="key" data-key="0">0</button>
+                <button class="key backspace" data-key="backspace"><i class="fas fa-backspace"></i></button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="q">Q</button>
+                <button class="key" data-key="w">W</button>
+                <button class="key" data-key="e">E</button>
+                <button class="key" data-key="r">R</button>
+                <button class="key" data-key="t">T</button>
+                <button class="key" data-key="y">Y</button>
+                <button class="key" data-key="u">U</button>
+                <button class="key" data-key="i">I</button>
+                <button class="key" data-key="o">O</button>
+                <button class="key" data-key="p">P</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="a">A</button>
+                <button class="key" data-key="s">S</button>
+                <button class="key" data-key="d">D</button>
+                <button class="key" data-key="f">F</button>
+                <button class="key" data-key="g">G</button>
+                <button class="key" data-key="h">H</button>
+                <button class="key" data-key="j">J</button>
+                <button class="key" data-key="k">K</button>
+                <button class="key" data-key="l">L</button>
+                <button class="key enter" data-key="enter">ENTER</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="z">Z</button>
+                <button class="key" data-key="x">X</button>
+                <button class="key" data-key="c">C</button>
+                <button class="key" data-key="v">V</button>
+                <button class="key" data-key="b">B</button>
+                <button class="key" data-key="n">N</button>
+                <button class="key" data-key="m">M</button>
+                <button class="key space" data-key="space">ПРОБЕЛ</button>
+            </div>
+        </div>
+        
+        <!-- Панель управления -->
+        <div class="control-panel">
+            <button id="sendBtn" class="control-btn send-btn">
+                <i class="fas fa-paper-plane"></i> ОТПРАВИТЬ
+            </button>
+            <button id="clearBtn" class="control-btn clear-btn">
+                <i class="fas fa-eraser"></i> ОЧИСТИТЬ
+            </button>
+            <button id="helpBtn" class="control-btn help-btn">
+                <i class="fas fa-question-circle"></i> ПОМОЩЬ
+            </button>
+        </div>
+    </div>
+    
+    <!-- Модальное окно настроек -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog turquoise"></i> НАСТРОЙКИ СИСТЕМЫ</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-item">
+                    <label for="apiKey">
+                        <i class="fas fa-key turquoise"></i> DeepSeek API Ключ
+                    </label>
+                    <div class="input-group">
+                        <input type="password" id="apiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                        <button id="toggleKeyVisibility" class="eye-btn">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <p class="setting-description">
+                        Получите API ключ на сайте 
+                        <a href="https://platform.deepseek.com/api_keys" target="_blank" class="turquoise">
+                            DeepSeek Platform
+                        </a>
+                    </p>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="consoleColor">
+                        <i class="fas fa-palette turquoise"></i> Цвет консоли
+                    </label>
+                    <select id="consoleColor" class="retro-select">
+                        <option value="#00ffff" selected>Бирюзовый (по умолчанию)</option>
+                        <option value="#00ff00">Зелёный</option>
+                        <option value="#ff9900">Оранжевый</option>
+                        <option value="#ff66cc">Розовый</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label>
+                        <i class="fas fa-code turquoise"></i> Эффекты
+                    </label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="scanlinesEffect" checked>
+                            <span class="checkmark"></span>
+                            Сканирующие линии (CRT эффект)
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="blinkCursor" checked>
+                            <span class="checkmark"></span>
+                            Мигающий курсор
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="typeSound">
+                            <span class="checkmark"></span>
+                            Звук печатания
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button id="saveSettings" class="save-btn">
+                        <i class="fas fa-save"></i> СОХРАНИТЬ
+                    </button>
+                    <button id="testApi" class="test-btn">
+                        <i class="fas fa-vial"></i> ТЕСТ API
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
