@@ -1,105 +1,524 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мия - Персональный ассистент</title>
+    <title>Мия Ассистент</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- Заголовок -->
-        <header class="app-header">
-            <div class="avatar">
-                <div class="avatar-circle" id="avatar">
-                    <span class="avatar-emoji" id="avatarEmoji">😊</span>
-                </div>
-            </div>
-            <h1>Мия</h1>
-            <p class="subtitle">Ваш персональный помощник</p>
-        </header>
-
-        <!-- Чат -->
-        <div class="chat-container" id="chatContainer">
-            <div class="message assistant">
-                <div class="message-avatar">🤖</div>
-                <div class="message-content">
-                    <div class="message-text">Привет! Я Мия. Чем могу помочь?</div>
-                    <div class="message-time">только что</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Управление -->
-        <div class="controls">
-            <div class="input-group">
-                <input type="text" 
-                       id="messageInput" 
-                       placeholder="Введите сообщение..."
-                       autocomplete="off">
-                <button id="sendButton" class="btn-send">➤</button>
-            </div>
-            
-            <div class="quick-actions">
-                <button class="action-btn" id="voiceBtn">
-                    🎤 Голос
-                </button>
-                <button class="action-btn" id="settingsBtn">
-                    ⚙️ Настройки
-                </button>
-                <button class="action-btn" id="clearBtn">
-                    🗑️ Очистить
-                </button>
-            </div>
-        </div>
-
-        <!-- Оверлей настроек -->
-        <div class="settings-overlay" id="settingsOverlay">
-            <div class="settings-panel">
-                <h2>⚙️ Настройки</h2>
-                
-                <div class="setting-item">
-                    <label>Тема:</label>
-                    <select id="themeSelect">
-                        <option value="light">🌞 Светлая</option>
-                        <option value="dark" selected>🌚 Тёмная</option>
-                        <option value="auto">📱 Авто</option>
-                    </select>
-                </div>
-                
-                <div class="setting-item">
-                    <label>Голос ассистента:</label>
-                    <select id="voiceSelect">
-                        <option value="female">👩 Женский</option>
-                        <option value="male">👨 Мужской</option>
-                        <option value="neutral">🤖 Нейтральный</option>
-                    </select>
-                </div>
-                
-                <div class="setting-item">
-                    <label>Эмоции:</label>
-                    <div class="emoji-selector">
-                        <button class="emoji-btn" data-emoji="😊">😊</button>
-                        <button class="emoji-btn" data-emoji="🤔">🤔</button>
-                        <button class="emoji-btn" data-emoji="😢">😢</button>
-                        <button class="emoji-btn" data-emoji="😂">😂</button>
-                        <button class="emoji-btn" data-emoji="😠">😠</button>
+        <!-- Боковое меню -->
+        <div class="side-menu" id="sideMenu">
+            <div class="menu-header">
+                <div class="user-avatar">
+                    <div class="avatar-circle">
+                        <span class="avatar-emoji" id="menuAvatar">👩</span>
                     </div>
                 </div>
-                
-                <div class="setting-item">
-                    <label>
-                        <input type="checkbox" id="soundToggle" checked>
-                        🔊 Звуковые уведомления
-                    </label>
+                <h3>Мия Ассистент</h3>
+                <p class="user-status">Online</p>
+            </div>
+            
+            <nav class="menu-nav">
+                <a href="#" class="nav-item active" data-page="main">
+                    <i class="fas fa-home"></i>
+                    <span>Главная</span>
+                </a>
+                <a href="#" class="nav-item" data-page="chat">
+                    <i class="fas fa-comment-dots"></i>
+                    <span>Чат</span>
+                    <span class="badge">3</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Настройки</span>
+                </a>
+                <a href="#" class="nav-item" data-page="memory">
+                    <i class="fas fa-brain"></i>
+                    <span>Память</span>
+                </a>
+                <a href="#" class="nav-item" data-page="help">
+                    <i class="fas fa-question-circle"></i>
+                    <span>Помощь</span>
+                </a>
+            </nav>
+            
+            <div class="menu-footer">
+                <div class="app-info">
+                    <p>Версия 1.0.0</p>
+                    <p class="status-dot"><span class="dot online"></span> Система активна</p>
                 </div>
-                
-                <button id="closeSettings" class="btn-close">✕ Закрыть</button>
+                <button class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Выйти</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Основной контент -->
+        <div class="main-content">
+            <!-- Шапка -->
+            <header class="top-bar">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="page-title">
+                    <h2 id="pageTitle">Главная</h2>
+                    <p id="pageSubtitle">Персональный ассистент</p>
+                </div>
+                <div class="top-actions">
+                    <button class="icon-btn" id="themeToggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button class="icon-btn" id="searchBtn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button class="icon-btn notification-btn" id="notifBtn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-count">2</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Контейнер страниц -->
+            <div class="page-container">
+                <!-- Главная страница -->
+                <div class="page active" id="mainPage">
+                    <div class="dashboard">
+                        <div class="welcome-card">
+                            <div class="assistant-avatar-large">
+                                <div class="avatar-large">
+                                    <span class="avatar-emoji-large" id="mainAvatar">👩</span>
+                                    <div class="status-indicator active"></div>
+                                </div>
+                            </div>
+                            <div class="welcome-text">
+                                <h1>Привет, <span id="userName">Друг</span>!</h1>
+                                <p>Я Мия, ваш персональный ассистент. Готов помочь с любыми задачами.</p>
+                            </div>
+                            
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <i class="fas fa-comment"></i>
+                                    <h3 id="messagesCount">127</h3>
+                                    <p>Сообщений</p>
+                                </div>
+                                <div class="stat-card">
+                                    <i class="fas fa-clock"></i>
+                                    <h3 id="activeDays">14</h3>
+                                    <p>Дней с нами</p>
+                                </div>
+                                <div class="stat-card">
+                                    <i class="fas fa-memory"></i>
+                                    <h3 id="memoryUsage">85%</h3>
+                                    <p>Память</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="quick-actions-grid">
+                            <h3>Быстрые действия</h3>
+                            <div class="actions-row">
+                                <button class="action-card" id="voiceAction">
+                                    <i class="fas fa-microphone"></i>
+                                    <span>Голосовой ввод</span>
+                                </button>
+                                <button class="action-card" id="notesAction">
+                                    <i class="fas fa-sticky-note"></i>
+                                    <span>Заметки</span>
+                                </button>
+                                <button class="action-card" id="reminderAction">
+                                    <i class="fas fa-bell"></i>
+                                    <span>Напоминания</span>
+                                </button>
+                            </div>
+                            <div class="actions-row">
+                                <button class="action-card" id="weatherAction">
+                                    <i class="fas fa-cloud-sun"></i>
+                                    <span>Погода</span>
+                                </button>
+                                <button class="action-card" id="musicAction">
+                                    <i class="fas fa-music"></i>
+                                    <span>Музыка</span>
+                                </button>
+                                <button class="action-card" id="arAction">
+                                    <i class="fas fa-vr-cardboard"></i>
+                                    <span>AR режим</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="recent-activity">
+                            <h3>Последняя активность</h3>
+                            <div class="activity-list">
+                                <div class="activity-item">
+                                    <i class="fas fa-comment activity-icon"></i>
+                                    <div class="activity-content">
+                                        <p>Обсуждение проекта с командой</p>
+                                        <span class="activity-time">10 минут назад</span>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <i class="fas fa-calendar activity-icon"></i>
+                                    <div class="activity-content">
+                                        <p>Напоминание о встрече в 15:00</p>
+                                        <span class="activity-time">1 час назад</span>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <i class="fas fa-music activity-icon"></i>
+                                    <div class="activity-content">
+                                        <p>Включена расслабляющая музыка</p>
+                                        <span class="activity-time">2 часа назад</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Чат страница -->
+                <div class="page" id="chatPage">
+                    <div class="chat-container">
+                        <div class="chat-header">
+                            <div class="chat-partner">
+                                <div class="partner-avatar">
+                                    <span>👩</span>
+                                </div>
+                                <div class="partner-info">
+                                    <h4>Мия Ассистент</h4>
+                                    <p class="partner-status">печатает...</p>
+                                </div>
+                            </div>
+                            <div class="chat-actions">
+                                <button class="icon-btn" id="voiceCallBtn">
+                                    <i class="fas fa-phone-alt"></i>
+                                </button>
+                                <button class="icon-btn" id="videoCallBtn">
+                                    <i class="fas fa-video"></i>
+                                </button>
+                                <button class="icon-btn" id="chatMenuBtn">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="messages-container" id="messagesContainer">
+                            <!-- Сообщения будут добавляться здесь -->
+                        </div>
+
+                        <div class="message-input-area">
+                            <div class="input-tools">
+                                <button class="input-tool-btn" id="attachBtn">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <button class="input-tool-btn" id="emojiBtn">
+                                    <i class="far fa-smile"></i>
+                                </button>
+                                <button class="input-tool-btn" id="voiceInputBtn">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                            </div>
+                            <div class="message-input-wrapper">
+                                <input type="text" 
+                                       id="messageInput" 
+                                       placeholder="Введите сообщение..."
+                                       autocomplete="off">
+                                <button class="send-btn" id="sendMessageBtn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Настройки страница -->
+                <div class="page" id="settingsPage">
+                    <div class="settings-container">
+                        <div class="settings-section">
+                            <h3><i class="fas fa-user-cog"></i> Основные настройки</h3>
+                            <div class="settings-group">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>Имя ассистента</label>
+                                        <p>Изменяет обращение к вам</p>
+                                    </div>
+                                    <input type="text" 
+                                           id="assistantName" 
+                                           class="setting-input" 
+                                           placeholder="Мия" 
+                                           value="Мия">
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>Язык интерфейса</label>
+                                        <p>Язык меню и команд</p>
+                                    </div>
+                                    <select id="languageSelect" class="setting-select">
+                                        <option value="ru">Русский</option>
+                                        <option value="en">English</option>
+                                        <option value="de">Deutsch</option>
+                                        <option value="fr">Français</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>Тема оформления</label>
+                                        <p>Светлая или тёмная тема</p>
+                                    </div>
+                                    <div class="theme-selector">
+                                        <button class="theme-option" data-theme="light">
+                                            <i class="fas fa-sun"></i>
+                                            <span>Светлая</span>
+                                        </button>
+                                        <button class="theme-option active" data-theme="dark">
+                                            <i class="fas fa-moon"></i>
+                                            <span>Тёмная</span>
+                                        </button>
+                                        <button class="theme-option" data-theme="auto">
+                                            <i class="fas fa-adjust"></i>
+                                            <span>Авто</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-volume-up"></i> Голос и звук</h3>
+                            <div class="settings-group">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>Голос ассистента</label>
+                                        <p>Выбор голоса для ответов</p>
+                                    </div>
+                                    <select id="voiceSelect" class="setting-select">
+                                        <option value="female">Женский (Мия)</option>
+                                        <option value="male">Мужской (Макс)</option>
+                                        <option value="neutral">Нейтральный</option>
+                                        <option value="custom">Пользовательский</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>Скорость речи</label>
+                                        <p id="speedValue">Средняя (1.0x)</p>
+                                    </div>
+                                    <input type="range" 
+                                           id="speechSpeed" 
+                                           min="0.5" 
+                                           max="2" 
+                                           step="0.1" 
+                                           value="1" 
+                                           class="setting-slider">
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>Громкость уведомлений</label>
+                                        <p id="volumeValue">75%</p>
+                                    </div>
+                                    <input type="range" 
+                                           id="notificationVolume" 
+                                           min="0" 
+                                           max="100" 
+                                           value="75" 
+                                           class="setting-slider">
+                                </div>
+                                
+                                <div class="setting-item toggle-item">
+                                    <div class="setting-info">
+                                        <label>Звуковые эффекты</label>
+                                        <p>Включить звуки интерфейса</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="soundEffects" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-robot"></i> AI Настройки</h3>
+                            <div class="settings-group">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <label>AI Провайдер</label>
+                                        <p>Выбор модели искусственного интеллекта</p>
+                                    </div>
+                                    <select id="aiProvider" class="setting-select">
+                                        <option value="deepseek">DeepSeek</option>
+                                        <option value="openai">OpenAI GPT</option>
+                                        <option value="offline">Локальный режим</option>
+                                        <option value="custom">Пользовательский API</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="setting-item" id="apiKeyContainer">
+                                    <div class="setting-info">
+                                        <label>API Ключ</label>
+                                        <p>Безопасное хранение ключа</p>
+                                    </div>
+                                    <div class="api-key-input">
+                                        <input type="password" 
+                                               id="apiKeyInput" 
+                                               class="setting-input" 
+                                               placeholder="Введите API ключ">
+                                        <button class="show-key-btn" id="showKeyBtn">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="setting-item toggle-item">
+                                    <div class="setting-info">
+                                        <label>Контекстная память</label>
+                                        <p>Запоминать историю разговоров</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="contextMemory" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="setting-item toggle-item">
+                                    <div class="setting-info">
+                                        <label>Обучение на диалогах</label>
+                                        <p>Улучшать ответы на основе ваших предпочтений</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="learningEnabled" checked>
+                                        <span class="slider"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-shield-alt"></i> Безопасность</h3>
+                            <div class="settings-group">
+                                <div class="setting-item toggle-item">
+                                    <div class="setting-info">
+                                        <label>Биометрическая аутентификация</label>
+                                        <p>Требовать отпечаток пальца для доступа</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="biometricAuth">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="setting-item toggle-item">
+                                    <div class="setting-info">
+                                        <label>Автоматическое удаление истории</label>
+                                        <p>Удалять старые диалоги через 30 дней</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="autoDeleteHistory" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="setting-item toggle-item">
+                                    <div class="setting-info">
+                                        <label>Шифрование данных</label>
+                                        <p>Зашифровывать все локальные данные</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="dataEncryption" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <button class="btn-danger" id="clearDataBtn">
+                                    <i class="fas fa-trash-alt"></i>
+                                    Очистить все данные
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-actions">
+                            <button class="btn-secondary" id="resetSettingsBtn">
+                                <i class="fas fa-undo"></i>
+                                Сбросить настройки
+                            </button>
+                            <button class="btn-primary" id="saveSettingsBtn">
+                                <i class="fas fa-save"></i>
+                                Сохранить изменения
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Память страница -->
+                <div class="page" id="memoryPage">
+                    <div class="memory-container">
+                        <div class="memory-stats">
+                            <div class="memory-stat">
+                                <h4>Объём памяти</h4>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 65%"></div>
+                                </div>
+                                <p>65% использовано (1.3 ГБ из 2 ГБ)</p>
+                            </div>
+                        </div>
+                        
+                        <div class="memory-controls">
+                            <button class="btn-secondary">
+                                <i class="fas fa-eraser"></i>
+                                Очистить кэш
+                            </button>
+                            <button class="btn-secondary">
+                                <i class="fas fa-download"></i>
+                                Экспорт данных
+                            </button>
+                        </div>
+                        
+                        <div class="memory-list">
+                            <h3>Сохранённые диалоги</h3>
+                            <!-- Список сохранённых диалогов -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Помощь страница -->
+                <div class="page" id="helpPage">
+                    <div class="help-container">
+                        <h2>Помощь и поддержка</h2>
+                        <div class="faq-section">
+                            <h3>Частые вопросы</h3>
+                            <!-- FAQ список -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Модальные окна -->
+    <div class="modal" id="voiceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Голосовой ввод</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="voice-visualizer">
+                    <!-- Визуализация звука -->
+                </div>
+                <p class="voice-status">Слушаю...</p>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
