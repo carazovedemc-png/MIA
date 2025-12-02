@@ -1,673 +1,520 @@
-// Telegram Web App инициализация
-const tg = window.Telegram.WebApp;
+/* app.js
+  NeoChat — improved app logic
+  - Telegram SDK initialization (if available)
+  - State management with localStorage
+  - Message rendering + persistence
+  - DeepSeek API interaction (with 402 handling)
+  - Virtual keyboard with Shift + optional sound
+*/
 
-// Состояние приложения
-const state = {
+(() => {
+  // ---------- Constants & Selectors ----------
+  const SELECTORS = {
+    messages: '#messages',
+    input: '#inputField',
+    sendBtn: '#sendBtn',
+    settingsModal: '#settingsModal',
+    apiKeyInput: '#apiKeyInput',
+    testApiBtn: '#testApiBtn',
+    testApiResult: '#testApiResult',
+    saveSettings: '#saveSettings',
+    btnOpenSettings: '#btnOpenSettings',
+    btnThemeToggle: '#btnThemeToggle',
+    themeButtons: '.theme-btn',
+    statusDot: '#statusDot',
+    statusText: '#statusText',
+    virtualKeyboard: '#virtualKeyboard',
+    toggleKeyboardSound: '#toggleKeyboardSound',
+    quickButtons: '#quickButtons',
+    btnClearHistory: '#btnClearHistory',
+  };
+
+  const el = sel => document.querySelector(sel);
+  const els = sel => Array.from(document.querySelectorAll(sel));
+
+  // ---------- App state ----------
+  const defaultState = {
     apiKey: localStorage.getItem('deepseek_api_key') || '',
-    messages: [],
-    isShift: false,
     theme: localStorage.getItem('app_theme') || 'dark',
-    keyboardVisible: true,
-    apiStatus: 'disconnected'
-};
+    keyboardVisible: JSON.parse(localStorage.getItem('keyboard_visible') || 'true'),
+    keyboardSound: JSON.parse(localStorage.getItem('keyboard_sound') || 'false'),
+    messages: JSON.parse(localStorage.getItem('messages') || '[]'), // persisted across sessions
+  };
 
-// Основные элементы DOM
-const elements = {
-    messageInput: document.getElementById('messageInput'),
-    sendBtn: document.getElementById('sendBtn'),
-    messagesContainer: document.getElementById('messagesContainer'),
-    settingsBtn: document.getElementById('settingsBtn'),
-    settingsModal: document.getElementById('settingsModal'),
-    closeModalBtn: document.querySelector('.close-modal'),
-    apiKeyInput: document.getElementById('apiKeyInput'),
-    toggleKeyBtn: document.getElementById('toggleKeyBtn'),
-    testApiBtn: document.getElementById('testApiBtn'),
-    apiTestResult: document.getElementById('apiTestResult'),
-    saveSettingsBtn: document.getElementById('saveSettingsBtn'),
-    closeSettingsBtn: document.getElementById('closeSettingsBtn'),
-    apiStatusLight: document.getElementById('apiStatusLight'),
-    apiStatusText: document.getElementById('apiStatusText'),
-    keyboard: document.getElementById('keyboard'),
-    toggleKeyboard: document.getElementById('toggleKeyboard'),
-    keyboardSound: document.getElementById('keyboardSound'),
-    clearBtn: document.getElementById('clearBtn'),
-    themeOptions: document.querySelectorAll('.theme-option'),
-    quickButtons: document.querySelectorAll('.quick-btn')
-};
+  const state = {...defaultState};
 
-// Инициализация приложения
-document.addEventListener('DOMContentLoaded', () => {
-    initTelegram();
-    loadState();
-    setupEventListeners();
-    applyTheme();
-    updateApiStatus();
+  // ---------- Helpers ----------
+  function saveState() {
+    localStorage.setItem('deepseek_api_key', state.apiKey || '');
+    localStorage.setItem('app_theme', state.theme || 'dark');
+    localStorage.setItem('keyboard_visible', JSON.stringify(state.keyboardVisible));
+    localStorage.setItem('keyboard_sound', JSON.stringify(state.keyboardSound));
+    localStorage.setItem('messages', JSON.stringify(state.messages || []));
+  }
+
+  function uid(prefix='msg') {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+  }
+
+  function showNotification(text, type='info') {
+    // minimal non-blocking toast
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = text;
+    t.style.position = 'fixed';
+    t.style.right = '16px';
+    t.style.bottom = '16px';
+    t.style.padding = '10px 12px';
+    t.style.borderRadius = '10px';
+    t.style.zIndex = 9999;
+    t.style.background = type === 'error' ? 'rgba(239,68,68,0.95)' : 'rgba(0,0,0,0.6)';
+    t.style.color = 'white';
+    document.body.appendChild(t);
+    setTimeout(()=> t.remove(), 3000);
+  }
+
+  // ---------- Telegram SDK init ----------
+  function initTelegram() {
+    try {
+      if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        try { tg.expand(); } catch(e) {}
+        // optional header color
+        try { tg.setHeaderColor(state.theme === 'light' ? '#ffffff' : '#000000'); } catch(e) {}
+      }
+    } catch (e) {
+      // Not in telegram: ignore
+      console.debug('Telegram SDK not available', e);
+    }
+  }
+
+  // ---------- Rendering ----------
+  const messagesNode = el(SELECTORS.messages);
+  const template = document.getElementById('messageTemplate');
+
+  function renderMessages() {
+    messagesNode.innerHTML = '';
+    for (const m of state.messages) {
+      const node = renderMessage(m);
+      messagesNode.appendChild(node);
+    }
+    messagesNode.scrollTop = messagesNode.scrollHeight;
+  }
+
+  function renderMessage(message) {
+    const clone = template.content.cloneNode(true);
+    const wrapper = clone.querySelector('.message');
+    const bubble = clone.querySelector('.bubble');
+    const textNode = clone.querySelector('.text');
+    const meta = clone.querySelector('.meta');
+
+    wrapper.dataset.id = message.id;
+    if (message.type === 'user') {
+      wrapper.classList.add('user-message');
+      meta.textContent = `Вы • ${new Date(message.timestamp).toLocaleTimeString()}`;
+    } else if (message.type === 'ai') {
+      wrapper.classList.add('ai-message');
+      meta.textContent = `DeepSeek • ${new Date(message.timestamp).toLocaleTimeString()}`;
+    } else {
+      meta.textContent = `Система • ${new Date(message.timestamp).toLocaleTimeString()}`;
+    }
+
+    // support simple markdown-ish code block rendering
+    const html = formatMessageText(message.text || '');
+    textNode.innerHTML = html;
+    if (message.isLoading) {
+      const loader = document.createElement('div');
+      loader.className = 'loader';
+      loader.textContent = '...';
+      textNode.appendChild(loader);
+    }
+
+    return clone;
+  }
+
+  function formatMessageText(text) {
+    if (!text) return '';
+    // escape HTML
+    const esc = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // simple code blocks ``` -> pre
+    const withPre = esc.replace(/```([\s\S]*?)```/g, (_m, code) => `<pre style="white-space:pre-wrap;margin:6px 0;padding:8px;border-radius:6px;background:rgba(0,0,0,0.2)">${code}</pre>`);
+    // inline code `code`
+    const withInline = withPre.replace(/`([^`]+)`/g, (_m, c) => `<code style="padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.12)">${c}</code>`);
+    // newlines -> <br>
+    return withInline.replace(/\n/g,'<br>');
+  }
+
+  // ---------- Message management ----------
+  function addMessage(type, text, {isLoading=false, id=null} = {}) {
+    const message = {
+      id: id || uid(),
+      type,
+      text,
+      timestamp: Date.now(),
+      isLoading
+    };
+    state.messages.push(message);
+    saveState();
+    renderMessages();
+    return message;
+  }
+
+  function updateMessage(id, patch) {
+    const idx = state.messages.findIndex(m => m.id === id);
+    if (idx === -1) return;
+    state.messages[idx] = {...state.messages[idx], ...patch};
+    saveState();
+    renderMessages();
+  }
+
+  function clearHistory() {
+    state.messages = [];
+    saveState();
+    renderMessages();
+    showNotification('История очищена');
+  }
+
+  // ---------- API Service ----------
+  const DeepSeek = {
+    endpoint: 'https://api.deepseek.com/v1/chat/completions',
+    async send(text, apiKey, opts={}) {
+      // opts: {onProgress: fn}
+      if (!apiKey) throw new Error('NO_API_KEY');
+      const body = {
+        model: 'deepseek-chat',
+        messages: [{role:'user', content: text}],
+        max_tokens: 2000,
+        temperature: 0.7,
+        stream: false
+      };
+      try {
+        const resp = await fetch(this.endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (resp.status === 401) {
+          throw new Error('INVALID_KEY');
+        }
+        if (resp.status === 402) {
+          // provide actionable message
+          const hint = `Оплата требуется (402). Проверьте баланс на platform.deepseek.com, убедитесь что ключ активен или создайте новый ключ.`;
+          throw Object.assign(new Error('PAYMENT_REQUIRED'), {hint});
+        }
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(`HTTP_${resp.status}: ${text}`);
+        }
+
+        const data = await resp.json();
+        // try common shape: data.choices[0].message.content
+        let reply = '';
+        try {
+          reply = data?.choices?.[0]?.message?.content || data?.result || JSON.stringify(data);
+        } catch(e) {
+          reply = JSON.stringify(data);
+        }
+        return reply;
+      } catch (err) {
+        throw err;
+      }
+    },
+
+    async testKey(apiKey) {
+      try {
+        // lightweight call: ping model with empty message (or a short system prompt)
+        const resp = await fetch(this.endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [{role: 'system', content: 'ping'}],
+            max_tokens: 1,
+          })
+        });
+        if (resp.status === 402) return {ok:false, code:402};
+        if (resp.status === 401) return {ok:false, code:401};
+        return {ok: resp.ok, code: resp.status};
+      } catch (e) {
+        return {ok:false, code: null, error: e.message};
+      }
+    }
+  };
+
+  // ---------- Send workflow ----------
+  async function handleSend(customText) {
+    const input = el(SELECTORS.input);
+    const rawText = (customText !== undefined) ? customText : input.value.trim();
+    if (!rawText) {
+      showNotification('Введите сообщение', 'error');
+      return;
+    }
+    if (!state.apiKey) {
+      showNotification('Установите API ключ в настройках', 'error');
+      openSettings();
+      return;
+    }
+
+    // Add user message
+    const userMsg = addMessage('user', rawText);
+
+    // Add placeholder AI message with loading state
+    const aiPlaceholder = addMessage('ai', '...', {isLoading:true});
+    // reset input
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Update status dot
+    setApiStatus('loading');
+
+    try {
+      // call API
+      const reply = await DeepSeek.send(rawText, state.apiKey);
+      updateMessage(aiPlaceholder.id, {text: reply, isLoading: false});
+      setApiStatus('ok');
+    } catch (err) {
+      let userMessage = 'Ошибка при обращении к DeepSeek';
+      if (err.message === 'NO_API_KEY') userMessage = 'Нет API ключа';
+      if (err.message === 'INVALID_KEY' || err.message === '401') userMessage = 'Неверный API ключ';
+      if (err.message === 'PAYMENT_REQUIRED' || err.hint) userMessage = err.hint || 'Ошибка оплаты (402)';
+      updateMessage(aiPlaceholder.id, {text: userMessage, isLoading: false});
+      setApiStatus('error', userMessage);
+      showNotification(userMessage, 'error');
+    }
+  }
+
+  // ---------- API status UI ----------
+  function setApiStatus(status, message='') {
+    const dot = el(SELECTORS.statusDot);
+    const text = el(SELECTORS.statusText);
+    if (!dot || !text) return;
+    if (status === 'ok') {
+      dot.style.background = 'var(--success)';
+      text.textContent = 'Connected';
+    } else if (status === 'loading') {
+      dot.style.background = 'orange';
+      text.textContent = 'Thinking...';
+    } else {
+      dot.style.background = 'var(--error)';
+      text.textContent = message || 'Disconnected';
+    }
+  }
+
+  // ---------- Settings modal ----------
+  function openSettings() {
+    const modal = el(SELECTORS.settingsModal);
+    modal.setAttribute('aria-hidden', 'false');
+    const keyInput = el(SELECTORS.apiKeyInput);
+    keyInput.value = state.apiKey || '';
+    const soundToggle = el(SELECTORS.toggleKeyboardSound);
+    soundToggle.checked = !!state.keyboardSound;
+  }
+
+  function closeSettings() {
+    const modal = el(SELECTORS.settingsModal);
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  async function testApiKeyVisual() {
+    const key = el(SELECTORS.apiKeyInput).value.trim();
+    const resultBox = el(SELECTORS.testApiResult);
+    resultBox.textContent = 'Проверяем...';
+    const res = await DeepSeek.testKey(key);
+    if (res.ok) {
+      resultBox.textContent = 'Ключ валиден';
+      resultBox.style.color = 'var(--success)';
+    } else {
+      resultBox.textContent = `Ошибка: ${res.code || res.error || 'неизвестно'}`;
+      resultBox.style.color = 'var(--error)';
+    }
+  }
+
+  // ---------- Virtual keyboard ----------
+  class VirtualKeyboard {
+    constructor(containerSelector) {
+      this.container = el(containerSelector);
+      this.isShift = false;
+      this.sound = new Audio(); // simple beep
+      // tiny generated sound (data URL)
+      this.sound.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+      this.build();
+    }
+
+    build() {
+      // keyboard layout (simple)
+      const rows = [
+        ['q','w','e','r','t','y','u','i','o','p'],
+        ['a','s','d','f','g','h','j','k','l'],
+        ['Shift','z','x','c','v','b','n','m','Back'],
+        ['Space','.','@','Enter']
+      ];
+      this.container.innerHTML = '';
+      for (const r of rows) {
+        const row = document.createElement('div');
+        row.className = 'keyboard-row';
+        for (const k of r) {
+          const key = document.createElement('button');
+          key.className = 'key';
+          key.type = 'button';
+          key.textContent = k;
+          key.dataset.key = k;
+          key.addEventListener('click', ()=> this.handleKey(k));
+          row.appendChild(key);
+        }
+        this.container.appendChild(row);
+      }
+    }
+
+    handleKey(key) {
+      const input = el(SELECTORS.input);
+      if (!input) return;
+      if (key === 'Back') {
+        input.value = input.value.slice(0, -1);
+      } else if (key === 'Shift') {
+        this.isShift = !this.isShift;
+        this.updateCase();
+      } else if (key === 'Space') {
+        input.value += ' ';
+      } else if (key === 'Enter') {
+        // send
+        document.getElementById('sendBtn').click();
+      } else {
+        input.value += this.isShift ? key.toUpperCase() : key;
+      }
+      adjustTextareaHeight(input);
+      if (state.keyboardSound) this.playSound();
+    }
+
+    updateCase() {
+      const keys = this.container.querySelectorAll('.key');
+      keys.forEach(k => {
+        const text = k.dataset.key;
+        if (text && text.length === 1) {
+          k.textContent = this.isShift ? text.toUpperCase() : text.toLowerCase();
+        }
+      });
+    }
+
+    playSound() {
+      try {
+        this.sound.currentTime = 0;
+        this.sound.play();
+      } catch(e) {}
+    }
+  }
+
+  // ---------- UI wiring ----------
+  function setupUI() {
+    // persist theme on root
+    document.documentElement.setAttribute('data-theme', state.theme);
+
+    // fill saved messages
     renderMessages();
 
-    // Проверка API ключа при загрузке
+    // create keyboard
+    window.vkeyboard = new VirtualKeyboard(SELECTORS.virtualKeyboard);
+    window.vkeyboard.isShift = false;
+    window.vkeyboard.updateCase();
+
+    // Input autosize
+    const input = el(SELECTORS.input);
+    const sendBtn = el(SELECTORS.sendBtn);
+    input.addEventListener('input', ()=> adjustTextareaHeight(input));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+
+    // send
+    sendBtn.addEventListener('click', ()=> handleSend());
+
+    // quick buttons
+    const qb = el(SELECTORS.quickButtons);
+    qb.addEventListener('click', (e) => {
+      const btn = e.target.closest('.quick-btn');
+      if (!btn) return;
+      const mode = btn.dataset.mode;
+      if (mode === 'code') input.value = '/code ' + input.value;
+      if (mode === 'explain') input.value = '/explain ' + input.value;
+      if (mode === 'translate') input.value = '/translate ' + input.value;
+      input.focus();
+    });
+
+    // settings open
+    el(SELECTORS.btnOpenSettings).addEventListener('click', openSettings);
+    el('#closeSettings').addEventListener('click', closeSettings);
+    el(SELECTORS.saveSettings).addEventListener('click', () => {
+      state.apiKey = el(SELECTORS.apiKeyInput).value.trim();
+      state.keyboardSound = el(SELECTORS.toggleKeyboardSound).checked;
+      saveState();
+      closeSettings();
+      showNotification('Настройки сохранены');
+    });
+
+    el(SELECTORS.testApiBtn).addEventListener('click', testApiKeyVisual);
+
+    // theme buttons
+    els(SELECTORS.themeButtons).forEach(b => {
+      b.addEventListener('click', () => {
+        state.theme = b.dataset.theme;
+        document.documentElement.setAttribute('data-theme', state.theme);
+        saveState();
+        showNotification(`Тема: ${state.theme}`);
+      });
+    });
+
+    el(SELECTORS.btnThemeToggle).addEventListener('click', () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', state.theme);
+      saveState();
+    });
+
+    // keyboard sound toggle
+    el(SELECTORS.toggleKeyboardSound).addEventListener('change', (e) => {
+      state.keyboardSound = e.target.checked;
+      saveState();
+    });
+
+    el(SELECTORS.btnClearHistory).addEventListener('click', () => {
+      if (confirm('Очистить историю?')) clearHistory();
+    });
+
+    // basic accessibility: focus input when clicking messages area
+    el(SELECTORS.messages).addEventListener('click', ()=> el(SELECTORS.input).focus());
+  }
+
+  function adjustTextareaHeight(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+  }
+
+  // ---------- Boot ----------
+  function boot() {
+    initTelegram();
+    setupUI();
+    // restore apiKey into settings input if modal opens later
+    const savedKey = state.apiKey || '';
+    // attempt to set status
     if (state.apiKey) {
-        checkApiKey(state.apiKey);
-    }
-});
-
-// Инициализация Telegram
-function initTelegram() {
-    tg.ready();
-    tg.expand();
-    tg.enableClosingConfirmation();
-    
-    tg.setHeaderColor('#000000');
-    tg.setBackgroundColor('#0a0a0f');
-    
-    // Добавляем системное сообщение
-    addMessage('system', 'Telegram Web App инициализирован. Готов к работе!');
-}
-
-// Загрузка состояния
-function loadState() {
-    // Тема
-    const savedTheme = localStorage.getItem('app_theme');
-    if (savedTheme) {
-        state.theme = savedTheme;
-    }
-    
-    // Клавиатура
-    const keyboardVisible = localStorage.getItem('keyboard_visible');
-    if (keyboardVisible !== null) {
-        state.keyboardVisible = keyboardVisible === 'true';
-        elements.keyboard.style.display = state.keyboardVisible ? 'grid' : 'none';
-        elements.toggleKeyboard.checked = state.keyboardVisible;
-    }
-    
-    // Звук
-    const keyboardSound = localStorage.getItem('keyboard_sound');
-    if (keyboardSound !== null) {
-        elements.keyboardSound.checked = keyboardSound === 'true';
-    }
-}
-
-// Настройка обработчиков событий
-function setupEventListeners() {
-    // Отправка сообщения
-    elements.sendBtn.addEventListener('click', sendMessage);
-    elements.messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-    // Быстрые кнопки
-    elements.quickButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const text = btn.getAttribute('data-text');
-            elements.messageInput.value = text;
-            elements.messageInput.focus();
-        });
-    });
-
-    // Настройки
-    elements.settingsBtn.addEventListener('click', () => {
-        elements.apiKeyInput.value = state.apiKey;
-        elements.settingsModal.style.display = 'flex';
-    });
-
-    elements.closeModalBtn.addEventListener('click', closeModal);
-    elements.closeSettingsBtn.addEventListener('click', closeModal);
-
-    // Показать/скрыть API ключ
-    elements.toggleKeyBtn.addEventListener('click', () => {
-        const type = elements.apiKeyInput.type;
-        elements.apiKeyInput.type = type === 'password' ? 'text' : 'password';
-        elements.toggleKeyBtn.innerHTML = type === 'password' ? 
-            '<i class="fas fa-eye-slash"></i>' : 
-            '<i class="fas fa-eye"></i>';
-    });
-
-    // Проверка API
-    elements.testApiBtn.addEventListener('click', testApiConnection);
-
-    // Сохранение настроек
-    elements.saveSettingsBtn.addEventListener('click', saveSettings);
-
-    // Очистка чата
-    elements.clearBtn.addEventListener('click', () => {
-        if (confirm('Очистить всю историю сообщений?')) {
-            state.messages = [];
-            renderMessages();
-            addMessage('system', 'История сообщений очищена.');
-        }
-    });
-
-    // Переключение темы
-    elements.themeOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            elements.themeOptions.forEach(opt => opt.classList.remove('active'));
-            option.classList.add('active');
-            state.theme = option.getAttribute('data-theme');
-            applyTheme();
-        });
-    });
-
-    // Управление клавиатурой
-    elements.toggleKeyboard.addEventListener('change', (e) => {
-        state.keyboardVisible = e.target.checked;
-        elements.keyboard.style.display = state.keyboardVisible ? 'grid' : 'none';
-        localStorage.setItem('keyboard_visible', state.keyboardVisible);
-    });
-
-    // Виртуальная клавиатура
-    setupVirtualKeyboard();
-
-    // Закрытие модального окна
-    elements.settingsModal.addEventListener('click', (e) => {
-        if (e.target === elements.settingsModal) {
-            closeModal();
-        }
-    });
-}
-
-// Настройка виртуальной клавиатуры
-function setupVirtualKeyboard() {
-    const keys = document.querySelectorAll('.key');
-    
-    keys.forEach(key => {
-        key.addEventListener('click', () => {
-            const keyValue = key.getAttribute('data-key');
-            const input = elements.messageInput;
-            
-            // Звук нажатия
-            if (elements.keyboardSound.checked) {
-                playKeySound();
-            }
-            
-            // Обработка специальных клавиш
-            switch(keyValue) {
-                case 'backspace':
-                    input.value = input.value.slice(0, -1);
-                    break;
-                    
-                case 'enter':
-                    sendMessage();
-                    break;
-                    
-                case 'space':
-                    input.value += ' ';
-                    break;
-                    
-                case 'shift':
-                    state.isShift = !state.isShift;
-                    key.classList.toggle('active', state.isShift);
-                    updateKeyboardCase();
-                    break;
-                    
-                case 'numbers':
-                    // Переключение на цифровую клавиатуру (упрощённо)
-                    const isNumbers = key.textContent === '123';
-                    key.textContent = isNumbers ? 'ABC' : '123';
-                    key.setAttribute('data-key', isNumbers ? 'letters' : 'numbers');
-                    break;
-                    
-                default:
-                    if (keyValue.length === 1) {
-                        const char = state.isShift ? keyValue.toUpperCase() : keyValue.toLowerCase();
-                        input.value += char;
-                        
-                        // Автоматически выключаем Shift после одной буквы
-                        if (state.isShift && keyValue.match(/[a-z]/)) {
-                            state.isShift = false;
-                            document.querySelector('[data-key="shift"]').classList.remove('active');
-                            updateKeyboardCase();
-                        }
-                    }
-            }
-            
-            input.focus();
-            input.scrollLeft = input.scrollWidth;
-        });
-    });
-}
-
-// Обновление регистра клавиш
-function updateKeyboardCase() {
-    const letterKeys = document.querySelectorAll('.key[data-key^=""]');
-    letterKeys.forEach(key => {
-        const keyValue = key.getAttribute('data-key');
-        if (keyValue && keyValue.length === 1) {
-            key.textContent = state.isShift ? keyValue.toUpperCase() : keyValue.toLowerCase();
-        }
-    });
-}
-
-// Отправка сообщения
-async function sendMessage() {
-    const text = elements.messageInput.value.trim();
-    
-    if (!text) {
-        showNotification('Введите сообщение', 'error');
-        return;
-    }
-    
-    if (!state.apiKey) {
-        showNotification('Настройте API ключ в настройках', 'error');
-        elements.settingsModal.style.display = 'flex';
-        return;
-    }
-    
-    // Добавляем сообщение пользователя
-    addMessage('user', text);
-    elements.messageInput.value = '';
-    
-    // Показываем индикатор загрузки
-    const loadingId = addMessage('ai', 'Думаю...', true);
-    
-    try {
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [{ role: 'user', content: text }],
-                max_tokens: 2000,
-                temperature: 0.7,
-                stream: false
-            })
-        });
-        
-        // Обработка ошибок API
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            
-            // Ошибка 402 - Payment Required
-            if (response.status === 402) {
-                throw new Error('Проблема с API ключом. Проверьте баланс или валидность ключа на platform.deepseek.com');
-            }
-            
-            // Другие ошибки
-            throw new Error(errorData.error?.message || `Ошибка API: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Удаляем индикатор загрузки
-        removeMessage(loadingId);
-        
-        // Добавляем ответ
-        if (data.choices && data.choices[0]) {
-            addMessage('ai', data.choices[0].message.content);
-            updateApiStatus('connected');
-        }
-        
-    } catch (error) {
-        removeMessage(loadingId);
-        
-        // Показываем понятную ошибку
-        let errorMessage = error.message;
-        
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            errorMessage = 'Проблема с интернет-соединением. Проверьте подключение.';
-        } else if (error.message.includes('402')) {
-            errorMessage = '❌ Проблема с API ключом DeepSeek:\n1. Проверьте баланс на platform.deepseek.com\n2. Убедитесь, что ключ активен\n3. При необходимости создайте новый ключ';
-        }
-        
-        addMessage('system', `Ошибка: ${errorMessage}`);
-        updateApiStatus('error');
-        
-        // Предлагаем проверить настройки
-        if (error.message.includes('402') || error.message.includes('ключ')) {
-            setTimeout(() => {
-                if (confirm('Открыть настройки для проверки API ключа?')) {
-                    elements.settingsModal.style.display = 'flex';
-                }
-            }, 1000);
-        }
-    }
-}
-
-// Добавление сообщения
-function addMessage(type, text, isLoading = false) {
-    const id = 'msg_' + Date.now() + Math.random().toString(36).substr(2, 9);
-    
-    const message = {
-        id,
-        type,
-        text,
-        timestamp: new Date(),
-        isLoading
-    };
-    
-    state.messages.push(message);
-    renderMessage(message);
-    
-    // Прокрутка вниз
-    setTimeout(() => {
-        elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
-    }, 100);
-    
-    return id;
-}
-
-// Отрисовка сообщения
-function renderMessage(message) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${message.type}-message`;
-    messageDiv.id = message.id;
-    
-    const time = message.timestamp.toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    });
-    
-    let avatarIcon = 'fas fa-user';
-    let senderName = 'Вы';
-    
-    if (message.type === 'ai') {
-        avatarIcon = 'fas fa-robot';
-        senderName = 'DeepSeek AI';
-    } else if (message.type === 'system') {
-        avatarIcon = 'fas fa-info-circle';
-        senderName = 'Система';
-    }
-    
-    if (message.isLoading) {
-        messageDiv.innerHTML = `
-            <div class="avatar">
-                <i class="${avatarIcon}"></i>
-            </div>
-            <div class="content">
-                <div class="sender">${senderName}</div>
-                <div class="text">
-                    <div class="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </div>
-                <div class="time">${time}</div>
-            </div>
-        `;
+      DeepSeek.testKey(state.apiKey).then(r => {
+        if (r.ok) setApiStatus('ok'); else setApiStatus('error', 'Invalid API');
+      });
     } else {
-        // Форматирование текста
-        let formattedText = message.text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code>$1</code>')
-            .replace(/\n/g, '<br>')
-            .replace(/```(\w+)?\n([\s\S]*?)\n```/g, '<pre><code>$2</code></pre>');
-        
-        messageDiv.innerHTML = `
-            <div class="avatar">
-                <i class="${avatarIcon}"></i>
-            </div>
-            <div class="content">
-                <div class="sender">${senderName}</div>
-                <div class="text">${formattedText}</div>
-                <div class="time">${time}</div>
-            </div>
-        `;
+      setApiStatus('error', 'No API key');
     }
-    
-    elements.messagesContainer.appendChild(messageDiv);
-}
+  }
 
-// Отрисовка всех сообщений
-function renderMessages() {
-    elements.messagesContainer.innerHTML = '';
-    state.messages.forEach(msg => renderMessage(msg));
-}
+  // run
+  document.addEventListener('DOMContentLoaded', boot);
 
-// Удаление сообщения
-function removeMessage(id) {
-    const element = document.getElementById(id);
-    if (element) {
-        element.remove();
-    }
-    state.messages = state.messages.filter(msg => msg.id !== id);
-}
-
-// Проверка API ключа
-async function checkApiKey(apiKey) {
-    if (!apiKey) {
-        updateApiStatus('disconnected');
-        return;
-    }
-    
-    try {
-        const response = await fetch('https://api.deepseek.com/v1/models', {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-        
-        if (response.ok) {
-            updateApiStatus('connected');
-            showNotification('API ключ работает!', 'success');
-        } else {
-            updateApiStatus('error');
-        }
-    } catch (error) {
-        updateApiStatus('error');
-    }
-}
-
-// Тестирование соединения с API
-async function testApiConnection() {
-    const apiKey = elements.apiKeyInput.value.trim();
-    
-    if (!apiKey) {
-        elements.apiTestResult.textContent = 'Введите API ключ';
-        elements.apiTestResult.className = 'test-result error';
-        elements.apiTestResult.style.display = 'block';
-        return;
-    }
-    
-    elements.testApiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Проверка...';
-    elements.testApiBtn.disabled = true;
-    
-    try {
-        const response = await fetch('https://api.deepseek.com/v1/models', {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-        
-        if (response.ok) {
-            elements.apiTestResult.textContent = '✅ Соединение с DeepSeek API успешно установлено!';
-            elements.apiTestResult.className = 'test-result success';
-            updateApiStatus('connected');
-        } else if (response.status === 401) {
-            elements.apiTestResult.textContent = '❌ Неверный API ключ. Проверьте ключ на platform.deepseek.com';
-            elements.apiTestResult.className = 'test-result error';
-            updateApiStatus('error');
-        } else if (response.status === 402) {
-            elements.apiTestResult.textContent = '❌ Проблема с оплатой API. Проверьте баланс на platform.deepseek.com';
-            elements.apiTestResult.className = 'test-result error';
-            updateApiStatus('error');
-        } else {
-            elements.apiTestResult.textContent = `❌ Ошибка сервера: ${response.status}`;
-            elements.apiTestResult.className = 'test-result error';
-            updateApiStatus('error');
-        }
-        
-        elements.apiTestResult.style.display = 'block';
-        
-    } catch (error) {
-        elements.apiTestResult.textContent = '❌ Ошибка сети. Проверьте интернет-соединение.';
-        elements.apiTestResult.className = 'test-result error';
-        elements.apiTestResult.style.display = 'block';
-        updateApiStatus('error');
-    } finally {
-        elements.testApiBtn.innerHTML = '<i class="fas fa-vial"></i> Проверить соединение';
-        elements.testApiBtn.disabled = false;
-    }
-}
-
-// Обновление статуса API
-function updateApiStatus(status) {
-    state.apiStatus = status;
-    
-    elements.apiStatusLight.className = 'status-indicator';
-    elements.apiStatusText.textContent = 'API не настроен';
-    
-    switch(status) {
-        case 'connected':
-            elements.apiStatusLight.classList.add('connected');
-            elements.apiStatusText.textContent = 'API подключён';
-            break;
-        case 'error':
-            elements.apiStatusLight.style.background = 'var(--error)';
-            elements.apiStatusText.textContent = 'Ошибка API';
-            break;
-        case 'disconnected':
-            elements.apiStatusLight.style.background = 'var(--warning)';
-            elements.apiStatusText.textContent = 'API не настроен';
-            break;
-    }
-}
-
-// Сохранение настроек
-function saveSettings() {
-    const apiKey = elements.apiKeyInput.value.trim();
-    
-    // Сохраняем API ключ
-    state.apiKey = apiKey;
-    localStorage.setItem('deepseek_api_key', apiKey);
-    
-    // Сохраняем настройки клавиатуры
-    localStorage.setItem('keyboard_visible', state.keyboardVisible);
-    localStorage.setItem('keyboard_sound', elements.keyboardSound.checked);
-    
-    // Сохраняем тему
-    localStorage.setItem('app_theme', state.theme);
-    
-    // Проверяем ключ
-    if (apiKey) {
-        checkApiKey(apiKey);
-    } else {
-        updateApiStatus('disconnected');
-    }
-    
-    showNotification('Настройки сохранены', 'success');
-    closeModal();
-    
-    // Добавляем системное сообщение
-    addMessage('system', 'Настройки обновлены. API ключ сохранён.');
-}
-
-// Применение темы
-function applyTheme() {
-    document.body.classList.remove('dark-theme', 'light-theme', 'blue-theme');
-    document.body.classList.add(`${state.theme}-theme`);
-    
-    // Обновляем активную кнопку темы
-    elements.themeOptions.forEach(opt => {
-        opt.classList.remove('active');
-        if (opt.getAttribute('data-theme') === state.theme) {
-            opt.classList.add('active');
-        }
-    });
-    
-    // Сохраняем в localStorage
-    localStorage.setItem('app_theme', state.theme);
-}
-
-// Закрытие модального окна
-function closeModal() {
-    elements.settingsModal.style.display = 'none';
-}
-
-// Воспроизведение звука клавиши
-function playKeySound() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 600 + Math.random() * 200;
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (error) {
-        // Аудио не поддерживается, игнорируем
-    }
-}
-
-// Показ уведомления
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? 'var(--success)' : 'var(--error)'};
-        color: white;
-        padding: 12px 24px;
-        border-radius: 8px;
-        z-index: 10000;
-        animation: slideIn 0.3s ease-out;
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease-out';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// Стили для анимаций
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-    
-    .typing-indicator {
-        display: flex;
-        gap: 4px;
-        padding: 8px 0;
-    }
-    
-    .typing-indicator span {
-        width: 8px;
-        height: 8px;
-        background: var(--text-secondary);
-        border-radius: 50%;
-        animation: typing 1.4s infinite ease-in-out;
-    }
-    
-    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-    
-    @keyframes typing {
-        0%, 80%, 100% { transform: scale(0); }
-        40% { transform: scale(1); }
-    }
-    
-    .key.active {
-        background: var(--accent-primary) !important;
-        color: white !important;
-    }
-`;
-document.head.appendChild(style);
-
-// Инициализация завершена
-console.log('NeoChat AI Terminal initialized');
+})();
