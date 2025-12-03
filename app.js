@@ -57,7 +57,7 @@ class TerminalBoot {
             setTimeout(() => {
                 this.fadeOutTerminal();
                 resolve();
-            }, 1000);
+            }, 700); // Изменено с 1000 до 700 мс
             return;
         }
 
