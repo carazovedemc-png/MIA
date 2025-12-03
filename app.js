@@ -1,234 +1,504 @@
-// app.js - Логика для eDEX-UI лаунчера
+// app.js - MIA AI Assistant Application Logic
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('[SYSTEM] eDEX-UI Launcher Initializing...');
+// Application State
+const AppState = {
+    terminalLoaded: false,
+    selectedPlan: null,
+    userSubscribed: false,
+    currentScreen: 'terminal'
+};
 
-    // ===== 1. ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТОВ =====
-    const state = {
-        cpuUsage: 15,
-        ramUsage: 45,
-        networkLoad: 120, // KB/s
-        isTerminalActive: true
-    };
+// DOM Elements
+const elements = {
+    terminalScreen: document.getElementById('terminalScreen'),
+    terminalContent: document.getElementById('terminalContent'),
+    mainApp: document.getElementById('mainApp'),
+    settingsBtn: document.getElementById('settingsBtn'),
+    settingsMenu: document.getElementById('settingsMenu'),
+    closeSettingsMenu: document.getElementById('closeSettingsMenu'),
+    subscribeBtn: document.getElementById('subscribeBtn'),
+    subscriptionMenu: document.getElementById('subscriptionMenu'),
+    closeSubscriptionMenu: document.getElementById('closeSubscriptionMenu'),
+    supportBtn: document.getElementById('supportBtn'),
+    supportMenu: document.getElementById('supportMenu'),
+    planCards: document.querySelectorAll('.plan-card'),
+    payButton: document.getElementById('payButton'),
+    paymentMethods: document.getElementById('paymentMethods')
+};
 
-    // ===== 2. ОБНОВЛЕНИЕ СИСТЕМНОЙ ИНФОРМАЦИИ В РЕАЛЬНОМ ВРЕМЕНИ =====
-    function updateSystemInfo() {
-        const now = new Date();
-        
-        // Обновление времени
-        const timeString = now.toLocaleTimeString('en-GB', { hour12: false }); // Формат 24ч
-        const timeDisplay = document.getElementById('timeDisplay');
-        if(timeDisplay) timeDisplay.textContent = timeString;
-        
-        // Обновление фиктивных показателей системы (случайные колебания)
-        state.cpuUsage = Math.max(5, Math.min(95, state.cpuUsage + (Math.random() * 6 - 3)));
-        state.ramUsage = Math.max(20, Math.min(85, state.ramUsage + (Math.random() * 4 - 2)));
-        state.networkLoad = Math.max(10, Math.min(1000, state.networkLoad + (Math.random() * 40 - 20)));
-        
-        // Обновление текстовых полей
-        const cpuElem = document.getElementById('cpuValue');
-        const ramElem = document.getElementById('ramValue');
-        const netElem = document.getElementById('netValue');
-        
-        if(cpuElem) cpuElem.textContent = Math.round(state.cpuUsage) + '%';
-        if(ramElem) ramElem.textContent = Math.round(state.ramUsage) + '%';
-        if(netElem) netElem.textContent = Math.round(state.networkLoad) + ' KB/s';
-        
-        // Обновление индикаторов-полосок
-        const cpuGauge = document.getElementById('cpuGauge');
-        const ramGauge = document.getElementById('ramGauge');
-        const netGauge = document.getElementById('netGauge');
-        
-        if(cpuGauge) cpuGauge.style.width = state.cpuUsage + '%';
-        if(ramGauge) ramGauge.style.width = state.ramUsage + '%';
-        if(netGauge) netGauge.style.width = Math.min(state.networkLoad / 10, 100) + '%'; // Масштабирование
+// Terminal Boot Sequence
+const bootMessages = [
+    "[SYSTEM] Initializing MIA AI Core...",
+    "[OK] Loading neural network modules...",
+    "[OK] Connecting to AI processors...",
+    "[OK] Initializing voice recognition...",
+    "[OK] Setting up memory cache...",
+    "[OK] Establishing secure connection...",
+    "[OK] Loading user interface...",
+    "[SUCCESS] MIA AI Assistant ready",
+    "[INFO] Terminal session complete"
+];
+
+class TerminalBoot {
+    constructor() {
+        this.messageIndex = 0;
+        this.lineDelay = 200;
+        this.charDelay = 30;
     }
 
-    // Запускаем обновление каждые 2 секунды
-    setInterval(updateSystemInfo, 2000);
-    updateSystemInfo(); // Первый вызов
-
-    // ===== 3. ЭМУЛЯЦИЯ РАБОЧЕГО ТЕРМИНАЛА =====
-    const termInput = document.getElementById('termInput');
-    const termContent = document.getElementById('termContent');
-    
-    // История команд
-    const commandHistory = [];
-    let historyIndex = -1;
-    
-    // Доступные команды
-    const commands = {
-        'help': 'Доступные команды: help, clear, system, network, date, time, echo [text], ls, dummy [app]',
-        'clear': function() {
-            if(termContent) {
-                // Сохраняем только строку ввода
-                const inputLine = termContent.querySelector('.term-input-line');
-                termContent.innerHTML = '';
-                if(inputLine) termContent.appendChild(inputLine);
-                addTerminalOutput('Терминал очищен.', 'system');
-            }
-        },
-        'system': `Системная информация (демо):
-        CPU: ${state.cpuUsage.toFixed(1)}%
-        RAM: ${state.ramUsage.toFixed(1)}%
-        NET: ${state.networkLoad.toFixed(0)} KB/s
-        ОС: eDEX-UI Launcher v1.0`,
-        'network': 'Сетевой статус: ДЕМО-РЕЖИМ | Пинг: <1 мс | Активных соединений: 12',
-        'date': new Date().toLocaleDateString(),
-        'time': new Date().toLocaleTimeString(),
-        'ls': 'apps/  system/  logs/  temp/  config.ini  readme.txt',
-        'echo': function(args) {
-            return args.join(' ');
-        }
-    };
-    
-    function addTerminalOutput(text, type = 'output') {
-        if(!termContent) return;
-        
-        const outputLine = document.createElement('div');
-        outputLine.className = 'term-output';
-        
-        if(type === 'system') {
-            outputLine.style.color = '#00aaff';
-            outputLine.textContent = '[SYS] ' + text;
-        } else if(type === 'error') {
-            outputLine.style.color = '#ff5555';
-            outputLine.textContent = '[ERR] ' + text;
-        } else {
-            outputLine.textContent = text;
-        }
-        
-        termContent.insertBefore(outputLine, termContent.querySelector('.term-input-line'));
-        // Автопрокрутка вниз
-        termContent.scrollTop = termContent.scrollHeight;
-    }
-    
-    function processCommand(input) {
-        if(!input.trim()) return;
-        
-        // Добавляем в историю
-        commandHistory.push(input);
-        historyIndex = commandHistory.length;
-        
-        // Показываем команду в терминале
-        addTerminalOutput(`root@edex-ui:~$ ${input}`, 'command');
-        
-        // Разбираем команду
-        const parts = input.split(' ');
-        const cmd = parts[0].toLowerCase();
-        const args = parts.slice(1);
-        
-        // Обработка
-        if(commands.hasOwnProperty(cmd)) {
-            if(typeof commands[cmd] === 'function') {
-                const result = commands[cmd](args);
-                if(result !== undefined) addTerminalOutput(result);
-            } else {
-                addTerminalOutput(commands[cmd]);
-            }
-        } 
-        else if(cmd.startsWith('dummy')) {
-            const appName = args[0] || 'unknown';
-            addTerminalOutput(`Запуск заглушки приложения: "${appName}"`, 'system');
-            addTerminalOutput(`Статус: Функциональность "${appName}" не реализована. Это демо-лаунчер.`, 'system');
-        }
-        else {
-            addTerminalOutput(`Команда не найдена: "${cmd}". Введите "help" для списка команд.`, 'error');
-        }
-    }
-    
-    // Обработка нажатия Enter в терминале
-    if(termInput) {
-        termInput.addEventListener('keydown', function(e) {
-            if(e.key === 'Enter') {
-                processCommand(this.value);
-                this.value = '';
-            }
-            // Навигация по истории стрелками
-            else if(e.key === 'ArrowUp') {
-                e.preventDefault();
-                if(commandHistory.length > 0) {
-                    historyIndex = Math.max(historyIndex - 1, 0);
-                    this.value = commandHistory[historyIndex] || '';
-                }
-            }
-            else if(e.key === 'ArrowDown') {
-                e.preventDefault();
-                if(commandHistory.length > 0) {
-                    historyIndex = Math.min(historyIndex + 1, commandHistory.length);
-                    this.value = commandHistory[historyIndex] || '';
-                }
-            }
-        });
-        
-        // Фокус на поле ввода при клике в любом месте терминала
-        termContent?.addEventListener('click', () => {
-            termInput.focus();
+    async start() {
+        return new Promise((resolve) => {
+            this.showNextMessage(resolve);
         });
     }
-    
-    // Добавляем начальное приветствие
-    setTimeout(() => {
-        addTerminalOutput('Добро пожаловать в eDEX-UI Launcher (Демо-версия)', 'system');
-        addTerminalOutput('Введите "help" для списка команд, или кликните на иконку приложения.', 'system');
-    }, 500);
 
-    // ===== 4. ЗАГЛУШКИ ПРИЛОЖЕНИЙ =====
-    const appIcons = document.querySelectorAll('.app-icon');
-    
-    appIcons.forEach(icon => {
-        icon.addEventListener('click', function() {
-            const appName = this.querySelector('.app-name').textContent;
-            const appIcon = this.querySelector('i').className;
-            
-            // Эффект нажатия
-            this.style.transform = 'scale(0.95)';
+    showNextMessage(resolve) {
+        if (this.messageIndex >= bootMessages.length) {
             setTimeout(() => {
-                this.style.transform = '';
-            }, 150);
-            
-            // Логируем в терминал
-            addTerminalOutput(`Запуск приложения: ${appName}`, 'system');
-            addTerminalOutput(`> Это заглушка. Реальное приложение "${appName}" не установлено.`, 'system');
-            
-            // Специальные действия для некоторых иконок
-            switch(appName.trim().toLowerCase()) {
-                case 'system':
-                    addTerminalOutput('> Показана панель мониторинга слева.', 'system');
-                    break;
-                case 'terminal':
-                    addTerminalOutput('> Терминал уже активен. Можно вводить команды.', 'system');
-                    termInput?.focus();
-                    break;
-                case 'power':
-                    addTerminalOutput('> Имитация выключения...', 'system');
-                    setTimeout(() => {
-                        addTerminalOutput('> [ДЕМО] Система была бы выключена.', 'system');
-                    }, 1000);
-                    break;
+                this.fadeOutTerminal();
+                resolve();
+            }, 1000);
+            return;
+        }
+
+        const message = bootMessages[this.messageIndex];
+        this.typeMessage(message, () => {
+            this.messageIndex++;
+            setTimeout(() => this.showNextMessage(resolve), this.lineDelay);
+        });
+    }
+
+    typeMessage(message, callback) {
+        const line = document.createElement('div');
+        line.className = 'terminal-line';
+        line.style.animationDelay = `${this.messageIndex * 0.1}s`;
+        elements.terminalContent.appendChild(line);
+
+        let charIndex = 0;
+        
+        const typeChar = () => {
+            if (charIndex < message.length) {
+                line.textContent += message.charAt(charIndex);
+                charIndex++;
+                setTimeout(typeChar, this.charDelay);
+            } else {
+                callback();
+            }
+        };
+
+        typeChar();
+        
+        // Scroll to bottom
+        elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
+    }
+
+    fadeOutTerminal() {
+        elements.terminalScreen.classList.add('fade-out');
+        setTimeout(() => {
+            elements.terminalScreen.style.display = 'none';
+            elements.mainApp.style.display = 'block';
+            AppState.currentScreen = 'main';
+            this.initializeMainApp();
+        }, 1000);
+    }
+
+    initializeMainApp() {
+        // Update subscribe button text based on subscription status
+        if (AppState.userSubscribed) {
+            elements.subscribeBtn.textContent = 'Extend Subscription';
+        }
+        
+        // Add event listeners
+        this.setupEventListeners();
+        
+        // Initialize animations
+        this.startBackgroundAnimation();
+    }
+
+    setupEventListeners() {
+        // Settings Menu
+        elements.settingsBtn.addEventListener('click', this.openSettingsMenu.bind(this));
+        elements.closeSettingsMenu.addEventListener('click', this.closeSettingsMenu.bind(this));
+        
+        // Subscription Menu
+        elements.subscribeBtn.addEventListener('click', this.openSubscriptionMenu.bind(this));
+        elements.closeSubscriptionMenu.addEventListener('click', this.closeSubscriptionMenu.bind(this));
+        
+        // Support Menu
+        elements.supportBtn.addEventListener('click', this.toggleSupportMenu.bind(this));
+        
+        // Plan Selection
+        elements.planCards.forEach(card => {
+            card.addEventListener('click', () => this.selectPlan(card));
+        });
+        
+        // Pay Button
+        elements.payButton.addEventListener('click', this.showPaymentMethods.bind(this));
+        
+        // Payment Methods
+        document.getElementById('sberPayment').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.processPayment('sber');
+        });
+        
+        document.getElementById('cardPayment').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.processPayment('card');
+        });
+        
+        document.getElementById('sbpPayment').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.processPayment('sbp');
+        });
+        
+        // Menu Items
+        document.getElementById('paymentItem').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showPaymentManagement();
+        });
+        
+        document.getElementById('transactionsItem').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showTransactions();
+        });
+        
+        document.getElementById('referralItem').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showReferralProgram();
+        });
+        
+        document.getElementById('supportItem').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.openTelegramSupport();
+        });
+        
+        document.getElementById('termsItem').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showTermsOfService();
+        });
+        
+        // Close menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!elements.supportBtn.contains(e.target) && 
+                !elements.supportMenu.contains(e.target) &&
+                elements.supportMenu.style.display === 'flex') {
+                this.closeSupportMenu();
             }
         });
-    });
+        
+        // Handle escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeAllMenus();
+            }
+        });
+        
+        // Handle mobile gestures
+        this.setupMobileGestures();
+    }
 
-    // ===== 5. КНОПКИ ВИРТУАЛЬНОЙ КЛАВИАТУРЫ =====
-    const keys = document.querySelectorAll('.key');
+    openSettingsMenu() {
+        elements.settingsMenu.style.display = 'flex';
+        setTimeout(() => {
+            elements.settingsMenu.classList.remove('closing');
+        }, 10);
+    }
+
+    closeSettingsMenu() {
+        elements.settingsMenu.classList.add('closing');
+        setTimeout(() => {
+            elements.settingsMenu.style.display = 'none';
+            elements.settingsMenu.classList.remove('closing');
+        }, 300);
+    }
+
+    openSubscriptionMenu(e) {
+        e.preventDefault();
+        elements.subscriptionMenu.style.display = 'flex';
+        setTimeout(() => {
+            elements.subscriptionMenu.classList.remove('closing');
+        }, 10);
+    }
+
+    closeSubscriptionMenu() {
+        elements.subscriptionMenu.classList.add('closing');
+        setTimeout(() => {
+            elements.subscriptionMenu.style.display = 'none';
+            elements.subscriptionMenu.classList.remove('closing');
+            elements.paymentMethods.style.display = 'none';
+            elements.payButton.style.display = 'block';
+            this.resetPlanSelection();
+        }, 300);
+    }
+
+    toggleSupportMenu() {
+        if (elements.supportMenu.style.display === 'flex') {
+            this.closeSupportMenu();
+        } else {
+            this.openSupportMenu();
+        }
+    }
+
+    openSupportMenu() {
+        elements.supportMenu.style.display = 'flex';
+        setTimeout(() => {
+            elements.supportMenu.classList.remove('closing');
+        }, 10);
+    }
+
+    closeSupportMenu() {
+        elements.supportMenu.classList.add('closing');
+        setTimeout(() => {
+            elements.supportMenu.style.display = 'none';
+            elements.supportMenu.classList.remove('closing');
+        }, 300);
+    }
+
+    closeAllMenus() {
+        if (elements.settingsMenu.style.display === 'flex') {
+            this.closeSettingsMenu();
+        }
+        if (elements.subscriptionMenu.style.display === 'flex') {
+            this.closeSubscriptionMenu();
+        }
+        if (elements.supportMenu.style.display === 'flex') {
+            this.closeSupportMenu();
+        }
+    }
+
+    selectPlan(card) {
+        // Remove selection from all cards
+        elements.planCards.forEach(c => {
+            c.classList.remove('selected');
+            c.style.transform = '';
+        });
+        
+        // Add selection to clicked card
+        card.classList.add('selected');
+        card.style.transform = 'scale(1.05)';
+        
+        // Store selected plan
+        AppState.selectedPlan = {
+            plan: card.dataset.plan,
+            price: card.dataset.price,
+            duration: card.querySelector('.plan-duration').textContent
+        };
+        
+        console.log('Selected plan:', AppState.selectedPlan);
+    }
+
+    resetPlanSelection() {
+        elements.planCards.forEach(card => {
+            card.classList.remove('selected');
+            card.style.transform = '';
+        });
+        AppState.selectedPlan = null;
+    }
+
+    showPaymentMethods() {
+        if (!AppState.selectedPlan) {
+            this.showNotification('Please select a subscription plan first');
+            return;
+        }
+        
+        elements.payButton.style.display = 'none';
+        elements.paymentMethods.style.display = 'flex';
+        
+        // Animate payment methods
+        const methods = elements.paymentMethods.children;
+        Array.from(methods).forEach((method, index) => {
+            method.style.opacity = '0';
+            method.style.transform = 'translateX(20px)';
+            
+            setTimeout(() => {
+                method.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                method.style.opacity = '1';
+                method.style.transform = 'translateX(0)';
+            }, index * 100);
+        });
+    }
+
+    processPayment(method) {
+        if (!AppState.selectedPlan) return;
+        
+        const paymentData = {
+            method: method,
+            plan: AppState.selectedPlan.plan,
+            amount: AppState.selectedPlan.price,
+            timestamp: new Date().toISOString(),
+            status: 'pending'
+        };
+        
+        console.log('Processing payment:', paymentData);
+        
+        // Simulate payment processing
+        this.showPaymentProcessing(method);
+        
+        // In a real app, you would:
+        // 1. Send payment data to your backend
+        // 2. Redirect to payment gateway
+        // 3. Handle the callback
+    }
+
+    showPaymentProcessing(method) {
+        let message = '';
+        let redirectUrl = '#';
+        
+        switch(method) {
+            case 'sber':
+                message = 'Redirecting to SberBank Online...';
+                redirectUrl = 'sberbank://payment';
+                break;
+            case 'card':
+                message = 'Opening card payment form...';
+                // In real app: show card form
+                break;
+            case 'sbp':
+                message = 'Generating SBP payment QR code...';
+                // In real app: generate QR code
+                break;
+        }
+        
+        this.showNotification(message);
+        
+        // Simulate redirect after delay
+        setTimeout(() => {
+            if (method === 'sber' || method === 'sbp') {
+                // In real app: window.location.href = redirectUrl;
+                this.showNotification('Payment successful! Subscription activated.');
+                AppState.userSubscribed = true;
+                elements.subscribeBtn.textContent = 'Extend Subscription';
+                this.closeSubscriptionMenu();
+            }
+        }, 2000);
+    }
+
+    showPaymentManagement() {
+        this.showNotification('Payment management system would open here');
+        // In real app: open payment management interface
+    }
+
+    showTransactions() {
+        this.showNotification('Transaction history would display here');
+        // In real app: show transaction history
+    }
+
+    showReferralProgram() {
+        this.showNotification('Referral program interface would open here');
+        // In real app: open referral program
+    }
+
+    openTelegramSupport() {
+        window.open('https://t.me/EDEM_CR', '_blank');
+    }
+
+    showTermsOfService() {
+        this.showNotification('Terms of Service would display here');
+        // In real app: show ToS modal
+    }
+
+    showNotification(message) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(25, 25, 25, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px 25px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(-50%) translateY(0)';
+        }, 10);
+        
+        // Remove after delay
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(-50%) translateY(-20px)';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    setupMobileGestures() {
+        let startY;
+        let startTime;
+        
+        document.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            startTime = Date.now();
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', (e) => {
+            // Prevent rubber-band scrolling on iOS
+            if (e.cancelable && document.body.scrollTop === 0 && e.touches[0].clientY > startY) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+    }
+
+    startBackgroundAnimation() {
+        // Background gradient animation is handled by CSS
+        // Add any additional animations here
+    }
+}
+
+// Initialize application when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    const app = new TerminalBoot();
+    app.start();
     
-    keys.forEach(key => {
-        key.addEventListener('click', function() {
-            const keyName = this.textContent;
-            addTerminalOutput(`[KEY] Нажата виртуальная клавиша: ${keyName}`, 'system');
-            
-            // Специальные действия для некоторых клавиш
-            if(keyName === 'Ctrl' && termInput) {
-                termInput.value = '';
-                termInput.focus();
-            } else if(keyName === 'Esc') {
-                addTerminalOutput('> Команда отменена.', 'system');
-            }
-        });
-    });
-
-    // ===== 6. ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА =====
-    console.log('[SYSTEM] eDEX-UI Launcher Ready.');
-    addTerminalOutput('Система инициализирована. Ожидание команд...', 'system');
+    // Handle viewport height on mobile
+    const setVH = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+    
+    // Handle keyboard appearance on mobile
+    const handleKeyboard = () => {
+        if (window.innerHeight < 500) {
+            document.body.style.height = '100vh';
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+            }, 100);
+        }
+    };
+    
+    window.addEventListener('resize', handleKeyboard);
 });
+
+// Export for debugging
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { AppState, TerminalBoot };
+}
