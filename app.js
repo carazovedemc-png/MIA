@@ -26,7 +26,7 @@ const elements = {
     paymentMethods: document.getElementById('paymentMethods')
 };
 
-// Terminal Boot Sequence
+// Terminal Boot Sequence (English only)
 const bootMessages = [
     "[SYSTEM] Initializing MIA AI Core...",
     "[OK] Loading neural network modules...",
@@ -105,7 +105,7 @@ class TerminalBoot {
     initializeMainApp() {
         // Update subscribe button text based on subscription status
         if (AppState.userSubscribed) {
-            elements.subscribeBtn.textContent = 'Extend Subscription';
+            elements.subscribeBtn.textContent = 'Продлить подписку';
         }
         
         // Add event listeners
@@ -172,10 +172,7 @@ class TerminalBoot {
             this.openTelegramSupport();
         });
         
-        document.getElementById('termsItem').addEventListener('click', (e) => {
-            e.preventDefault();
-            this.showTermsOfService();
-        });
+        // Terms link is already handled by href attribute
         
         // Close menus when clicking outside
         document.addEventListener('click', (e) => {
@@ -297,7 +294,7 @@ class TerminalBoot {
 
     showPaymentMethods() {
         if (!AppState.selectedPlan) {
-            this.showNotification('Please select a subscription plan first');
+            this.showNotification('Пожалуйста, сначала выберите план подписки');
             return;
         }
         
@@ -346,15 +343,15 @@ class TerminalBoot {
         
         switch(method) {
             case 'sber':
-                message = 'Redirecting to SberBank Online...';
+                message = 'Перенаправление в СберБанк Онлайн...';
                 redirectUrl = 'sberbank://payment';
                 break;
             case 'card':
-                message = 'Opening card payment form...';
+                message = 'Открытие формы оплаты картой...';
                 // In real app: show card form
                 break;
             case 'sbp':
-                message = 'Generating SBP payment QR code...';
+                message = 'Генерация QR-кода для СБП...';
                 // In real app: generate QR code
                 break;
         }
@@ -365,36 +362,31 @@ class TerminalBoot {
         setTimeout(() => {
             if (method === 'sber' || method === 'sbp') {
                 // In real app: window.location.href = redirectUrl;
-                this.showNotification('Payment successful! Subscription activated.');
+                this.showNotification('Оплата успешна! Подписка активирована.');
                 AppState.userSubscribed = true;
-                elements.subscribeBtn.textContent = 'Extend Subscription';
+                elements.subscribeBtn.textContent = 'Продлить подписку';
                 this.closeSubscriptionMenu();
             }
         }, 2000);
     }
 
     showPaymentManagement() {
-        this.showNotification('Payment management system would open here');
+        this.showNotification('Система управления оплатой откроется здесь');
         // In real app: open payment management interface
     }
 
     showTransactions() {
-        this.showNotification('Transaction history would display here');
+        this.showNotification('История транзакций будет отображена здесь');
         // In real app: show transaction history
     }
 
     showReferralProgram() {
-        this.showNotification('Referral program interface would open here');
+        this.showNotification('Интерфейс реферальной программы откроется здесь');
         // In real app: open referral program
     }
 
     openTelegramSupport() {
         window.open('https://t.me/EDEM_CR', '_blank');
-    }
-
-    showTermsOfService() {
-        this.showNotification('Terms of Service would display here');
-        // In real app: show ToS modal
     }
 
     showNotification(message) {
@@ -410,15 +402,15 @@ class TerminalBoot {
             background: rgba(25, 25, 25, 0.95);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 15px 25px;
+            border-radius: 12px;
+            padding: 12px 20px;
             color: white;
             font-size: 14px;
             font-weight: 500;
             z-index: 10000;
             opacity: 0;
             transition: all 0.3s ease;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         `;
         
         document.body.appendChild(notification);
