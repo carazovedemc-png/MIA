@@ -30,8 +30,7 @@ const elements = {
     googleAuth: document.getElementById('googleAuth'),
     telegramAuth: document.getElementById('telegramAuth'),
     miaAuth: document.getElementById('miaAuth'),
-    vkAuth: document.getElementById('vkAuth'),
-    typeSound: document.getElementById('typeSound')
+    vkAuth: document.getElementById('vkAuth')
 };
 
 // Terminal Boot Sequence (English only) - Ускоренная анимация
@@ -52,43 +51,12 @@ class TerminalBoot {
         this.messageIndex = 0;
         this.lineDelay = 120; // Ускорено с 200
         this.charDelay = 15; // Ускорено с 30
-        this.soundPlayed = false;
     }
 
     async start() {
         return new Promise((resolve) => {
-            // Начинаем воспроизведение звука после первого взаимодействия
-            this.setupSound();
             this.showNextMessage(resolve);
         });
-    }
-
-    setupSound() {
-        // Подготовка звука для воспроизведения при анимации
-        if (elements.typeSound) {
-            elements.typeSound.volume = 0.3;
-            elements.typeSound.loop = false;
-        }
-    }
-
-    playTypeSound() {
-        if (elements.typeSound && !this.soundPlayed) {
-            try {
-                // Воспроизводим звук с перемоткой в начало
-                elements.typeSound.currentTime = 0;
-                elements.typeSound.play().catch(e => {
-                    console.log("Audio play failed:", e);
-                });
-                this.soundPlayed = true;
-                
-                // Сбрасываем флаг через короткое время
-                setTimeout(() => {
-                    this.soundPlayed = false;
-                }, 300);
-            } catch (e) {
-                console.log("Sound error:", e);
-            }
-        }
     }
 
     showNextMessage(resolve) {
@@ -101,11 +69,6 @@ class TerminalBoot {
         }
 
         const message = bootMessages[this.messageIndex];
-        
-        // Воспроизводим звук в начале печати каждой строки
-        if (this.messageIndex % 2 === 0) { // Каждую вторую строку
-            this.playTypeSound();
-        }
         
         this.typeMessage(message, () => {
             this.messageIndex++;
@@ -125,12 +88,6 @@ class TerminalBoot {
             if (charIndex < message.length) {
                 line.textContent += message.charAt(charIndex);
                 charIndex++;
-                
-                // Иногда воспроизводим звук при печати символов
-                if (charIndex % 10 === 0 && this.messageIndex > 0) {
-                    this.playTypeSound();
-                }
-                
                 setTimeout(typeChar, this.charDelay);
             } else {
                 callback();
@@ -566,4 +523,49 @@ class TerminalBoot {
             background: rgba(25, 25, 25, 0.98);
             backdrop-filter: blur(30px);
             border: 1px solid rgba(255, 255, 255, 0.12);
-     
+            border-radius: 16px;
+            padding: 14px 24px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            z-index: 10000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            max-width: 90%;
+            text-align: center;
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(-50%) translateY(0)';
+        }, 10);
+        
+        // Remove after delay
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(-50%) translateY(-20px)';
+            setTimeout(() => notification.remove(), 400);
+        }, 3000);
+    }
+
+    setupMobileGestures() {
+        let startY;
+        let startTime;
+        
+        document.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            startTime = Date.now();
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (e.cancelable && document.body.scrollTop === 0 && e.touches[0].clientY > startY) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Prevent zoom on double tap
+        let lastTouchEnd 
