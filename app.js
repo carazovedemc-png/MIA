@@ -5,7 +5,8 @@ const AppState = {
     terminalLoaded: false,
     selectedPlan: null,
     userSubscribed: false,
-    currentScreen: 'terminal'
+    currentScreen: 'terminal',
+    user: null
 };
 
 // DOM Elements
@@ -23,7 +24,10 @@ const elements = {
     supportMenu: document.getElementById('supportMenu'),
     planCards: document.querySelectorAll('.plan-card'),
     payButton: document.getElementById('payButton'),
-    paymentMethods: document.getElementById('paymentMethods')
+    paymentMethods: document.getElementById('paymentMethods'),
+    skipTerminalBtn: document.getElementById('skipTerminalBtn'),
+    typeSound: document.getElementById('typeSound'),
+    googleAuthItem: document.getElementById('googleAuthItem')
 };
 
 // Terminal Boot Sequence (English only)
@@ -44,12 +48,51 @@ class TerminalBoot {
         this.messageIndex = 0;
         this.lineDelay = 200;
         this.charDelay = 30;
+        this.isSkipped = false;
+        this.audioContext = null;
+        this.shouldPlaySound = true;
+        this.timeoutIds = [];
     }
 
     async start() {
+        // Инициализация звука
+        this.initSound();
+        
+        // Загрузка состояния пользователя
+        this.loadUserState();
+        
         return new Promise((resolve) => {
             this.showNextMessage(resolve);
         });
+    }
+
+    initSound() {
+        // Создаем звук печати с помощью Web Audio API
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.log("Web Audio API не поддерживается");
+            this.shouldPlaySound = false;
+        }
+    }
+
+    playTypeSound() {
+        if (!this.shouldPlaySound || !this.audioContext) return;
+
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+
+        oscillator.frequency.value = 800 + Math.random() * 400;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.05);
+
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.05);
     }
 
     showNextMessage(resolve) {
@@ -57,14 +100,15 @@ class TerminalBoot {
             setTimeout(() => {
                 this.fadeOutTerminal();
                 resolve();
-            }, 700); // Изменено с 1000 до 700 мс
+            }, 700);
             return;
         }
 
         const message = bootMessages[this.messageIndex];
         this.typeMessage(message, () => {
             this.messageIndex++;
-            setTimeout(() => this.showNextMessage(resolve), this.lineDelay);
+            const timeoutId = setTimeout(() => this.showNextMessage(resolve), this.lineDelay);
+            this.timeoutIds.push(timeoutId);
         });
     }
 
@@ -77,10 +121,23 @@ class TerminalBoot {
         let charIndex = 0;
         
         const typeChar = () => {
+            if (this.isSkipped) {
+                line.textContent = message;
+                callback();
+                return;
+            }
+            
             if (charIndex < message.length) {
                 line.textContent += message.charAt(charIndex);
                 charIndex++;
-                setTimeout(typeChar, this.charDelay);
+                
+                // Воспроизводим звук для каждого символа (кроме пробела)
+                if (message.charAt(charIndex - 1) !== ' ') {
+                    this.playTypeSound();
+                }
+                
+                const timeoutId = setTimeout(typeChar, this.charDelay);
+                this.timeoutIds.push(timeoutId);
             } else {
                 callback();
             }
@@ -90,6 +147,33 @@ class TerminalBoot {
         
         // Scroll to bottom
         elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
+    }
+
+    skipAnimation() {
+        this.isSkipped = true;
+        
+        // Очищаем все таймауты
+        this.timeoutIds.forEach(id => clearTimeout(id));
+        this.timeoutIds = [];
+        
+        // Показываем все сообщения сразу
+        elements.terminalContent.innerHTML = '';
+        bootMessages.forEach((message, index) => {
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            line.style.animationDelay = `${index * 0.1}s`;
+            line.style.opacity = '1';
+            line.textContent = message;
+            elements.terminalContent.appendChild(line);
+        });
+        
+        // Прокручиваем вниз
+        elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
+        
+        // Немедленно переходим к завершению
+        setTimeout(() => {
+            this.fadeOutTerminal();
+        }, 300);
     }
 
     fadeOutTerminal() {
@@ -172,7 +256,16 @@ class TerminalBoot {
             this.openTelegramSupport();
         });
         
-        // Terms link is already handled by href attribute
+        // Google Auth
+        elements.googleAuthItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleGoogleAuth();
+        });
+        
+        // Skip terminal button
+        elements.skipTerminalBtn.addEventListener('click', () => {
+            this.skipAnimation();
+        });
         
         // Close menus when clicking outside
         document.addEventListener('click', (e) => {
@@ -199,6 +292,78 @@ class TerminalBoot {
         setTimeout(() => {
             elements.settingsMenu.classList.remove('closing');
         }, 10);
+        
+        // Обновляем пункт входа через Google в зависимости от состояния
+        this.updateGoogleAuthButton();
+    }
+
+    updateGoogleAuthButton() {
+        if (AppState.user) {
+            elements.googleAuthItem.innerHTML = `
+                <i class="fas fa-user-circle"></i> 
+                ${AppState.user.name} (Выйти)
+            `;
+        } else {
+            elements.googleAuthItem.innerHTML = `
+                <i class="fab fa-google"></i> Войти через Google
+            `;
+        }
+    }
+
+    handleGoogleAuth() {
+        if (AppState.user) {
+            // Выход
+            this.logout();
+        } else {
+            // Имитация входа через Google
+            this.mockGoogleAuth();
+        }
+    }
+
+    mockGoogleAuth() {
+        // В реальном приложении здесь было бы перенаправление на OAuth Google
+        // Для демонстрации мы используем моковые данные
+        const mockUser = {
+            id: 'google_123456',
+            name: 'Пользователь Google',
+            email: 'user@gmail.com',
+            avatar: 'https://via.placeholder.com/40',
+            loginMethod: 'google'
+        };
+        
+        this.login(mockUser);
+        this.showNotification('Успешный вход через Google');
+    }
+
+    login(userData) {
+        AppState.user = userData;
+        this.saveUserState();
+        this.updateGoogleAuthButton();
+    }
+
+    logout() {
+        AppState.user = null;
+        this.saveUserState();
+        this.updateGoogleAuthButton();
+        this.showNotification('Вы вышли из аккаунта');
+    }
+
+    saveUserState() {
+        localStorage.setItem('mia_user', JSON.stringify(AppState.user));
+        localStorage.setItem('mia_subscription', JSON.stringify(AppState.userSubscribed));
+    }
+
+    loadUserState() {
+        const savedUser = localStorage.getItem('mia_user');
+        const savedSubscription = localStorage.getItem('mia_subscription');
+        
+        if (savedUser) {
+            AppState.user = JSON.parse(savedUser);
+        }
+        
+        if (savedSubscription) {
+            AppState.userSubscribed = JSON.parse(savedSubscription);
+        }
     }
 
     closeSettingsMenu() {
@@ -365,6 +530,7 @@ class TerminalBoot {
                 this.showNotification('Оплата успешна! Подписка активирована.');
                 AppState.userSubscribed = true;
                 elements.subscribeBtn.textContent = 'Продлить подписку';
+                this.saveUserState();
                 this.closeSubscriptionMenu();
             }
         }, 2000);
@@ -443,54 +609,4 @@ class TerminalBoot {
             if (e.cancelable && document.body.scrollTop === 0 && e.touches[0].clientY > startY) {
                 e.preventDefault();
             }
-        }, { passive: false });
-        
-        // Prevent zoom on double tap
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', (e) => {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, { passive: false });
-    }
-
-    startBackgroundAnimation() {
-        // Background gradient animation is handled by CSS
-        // Add any additional animations here
-    }
-}
-
-// Initialize application when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    const app = new TerminalBoot();
-    app.start();
-    
-    // Handle viewport height on mobile
-    const setVH = () => {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-    
-    setVH();
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', setVH);
-    
-    // Handle keyboard appearance on mobile
-    const handleKeyboard = () => {
-        if (window.innerHeight < 500) {
-            document.body.style.height = '100vh';
-            setTimeout(() => {
-                window.scrollTo(0, 0);
-            }, 100);
-        }
-    };
-    
-    window.addEventListener('resize', handleKeyboard);
-});
-
-// Export for debugging
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { AppState, TerminalBoot };
-}
+   
