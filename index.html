@@ -10,8 +10,17 @@
 <body>
     <!-- Terminal Loading Screen -->
     <div class="terminal-screen" id="terminalScreen">
+        <!-- Кнопка скипа анимации -->
+        <button class="skip-terminal" id="skipTerminalBtn">
+            <i class="fas fa-forward"></i>
+        </button>
         <div id="terminalContent"></div>
     </div>
+
+    <!-- Аудио для звука печати в терминале -->
+    <audio id="typeSound" preload="auto">
+        <!-- Звук будет сгенерирован через JS, поэтому оставляем пустым -->
+    </audio>
 
     <!-- Main Application -->
     <div class="main-app" id="mainApp">
@@ -51,6 +60,10 @@
                 <i class="fas fa-times"></i>
             </button>
             <div class="menu-content slide-up">
+                <!-- Пункт для входа через Google -->
+                <a href="#" class="menu-item" id="googleAuthItem">
+                    <i class="fab fa-google"></i> Войти через Google
+                </a>
                 <a href="#" class="menu-item" id="paymentItem">
                     <i class="fas fa-credit-card"></i> Оплата
                 </a>
