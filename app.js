@@ -33,7 +33,7 @@ const elements = {
     vkAuth: document.getElementById('vkAuth')
 };
 
-// Terminal Boot Sequence (English only)
+// Terminal Boot Sequence (English only) - Ускоренная анимация
 const bootMessages = [
     "[SYSTEM] Initializing MIA AI Core...",
     "[OK] Loading neural network modules...",
@@ -49,51 +49,37 @@ const bootMessages = [
 class TerminalBoot {
     constructor() {
         this.messageIndex = 0;
-        this.lineDelay = 120;
-        this.charDelay = 15;
-        this.isTerminating = false;
+        this.lineDelay = 120; // Ускорено с 200
+        this.charDelay = 15; // Ускорено с 30
     }
 
     async start() {
-        console.log("Terminal boot starting...");
-        
-        // Гарантируем что терминал виден
-        elements.terminalScreen.style.display = 'flex';
-        elements.terminalScreen.style.opacity = '1';
-        elements.terminalScreen.style.zIndex = '1000';
-        
-        // Гарантируем что main-app скрыт
-        elements.mainApp.style.display = 'none';
-        
-        // Начинаем последовательность
-        await this.showNextMessage();
+        return new Promise((resolve) => {
+            this.showNextMessage(resolve);
+        });
     }
 
-    showNextMessage() {
-        return new Promise((resolve) => {
-            if (this.messageIndex >= bootMessages.length) {
-                console.log("All messages shown, starting fade out");
+    showNextMessage(resolve) {
+        if (this.messageIndex >= bootMessages.length) {
+            setTimeout(() => {
                 this.fadeOutTerminal();
                 resolve();
-                return;
-            }
+            }, 400); // Ускорено с 700
+            return;
+        }
 
-            const message = bootMessages[this.messageIndex];
-            console.log(`Showing message ${this.messageIndex}: ${message}`);
-            
-            this.typeMessage(message, () => {
-                this.messageIndex++;
-                setTimeout(() => {
-                    this.showNextMessage().then(resolve);
-                }, this.lineDelay);
-            });
+        const message = bootMessages[this.messageIndex];
+        
+        this.typeMessage(message, () => {
+            this.messageIndex++;
+            setTimeout(() => this.showNextMessage(resolve), this.lineDelay);
         });
     }
 
     typeMessage(message, callback) {
         const line = document.createElement('div');
         line.className = 'terminal-line';
-        line.style.animationDelay = `${this.messageIndex * 0.1}s`;
+        line.style.animationDelay = `${this.messageIndex * 0.05}s`; // Ускорено
         elements.terminalContent.appendChild(line);
 
         let charIndex = 0;
@@ -104,91 +90,48 @@ class TerminalBoot {
                 charIndex++;
                 setTimeout(typeChar, this.charDelay);
             } else {
-                // Прокрутка к низу
-                elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
                 callback();
             }
         };
 
         typeChar();
+        
+        // Scroll to bottom
+        elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
     }
 
     fadeOutTerminal() {
-        console.log("Starting terminal fade out");
-        
-        if (this.isTerminating) return;
-        this.isTerminating = true;
-        
-        // Добавляем класс для анимации исчезновения
         elements.terminalScreen.classList.add('fade-out');
-        
-        // Ждем окончания анимации
         setTimeout(() => {
-            console.log("Hiding terminal and showing main app");
-            
-            // Скрываем терминал
             elements.terminalScreen.style.display = 'none';
-            
-            // Показываем главное приложение
             elements.mainApp.style.display = 'block';
             elements.mainApp.classList.add('active');
-            
-            // Обновляем состояние
             AppState.currentScreen = 'main';
-            
-            // Инициализируем главное приложение
             this.initializeMainApp();
-            
-            console.log("Main app should be visible now");
-        }, 700);
+        }, 700); // Ускорено с 1000
     }
 
     initializeMainApp() {
-        console.log("Initializing main application");
-        
-        // Обновляем текст кнопки подписки
+        // Update subscribe button text based on subscription status
         if (AppState.userSubscribed) {
             elements.subscribeBtn.textContent = 'Продлить подписку';
         }
         
-        // Добавляем обработчики событий
+        // Add event listeners
         this.setupEventListeners();
-        
-        // Инициализируем анимации
-        this.startBackgroundAnimation();
     }
 
     setupEventListeners() {
-        console.log("Setting up event listeners");
-        
         // Settings Menu
-        elements.settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.openSettingsMenu();
-        });
-        
-        elements.closeSettingsMenu.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.closeSettingsMenu();
-        });
+        elements.settingsBtn.addEventListener('click', this.openSettingsMenu.bind(this));
+        elements.closeSettingsMenu.addEventListener('click', this.closeSettingsMenu.bind(this));
         
         // Subscription Menu
-        elements.subscribeBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.openSubscriptionMenu(e);
-        });
-        
-        elements.closeSubscriptionMenu.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.closeSubscriptionMenu();
-        });
+        elements.subscribeBtn.addEventListener('click', this.openSubscriptionMenu.bind(this));
+        elements.closeSubscriptionMenu.addEventListener('click', this.closeSubscriptionMenu.bind(this));
         
         // Support Menu
-        elements.supportBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleSupportMenu();
-        });
+        elements.supportBtn.addEventListener('click', this.toggleSupportMenu.bind(this));
         
         // Plan Selection
         elements.planCards.forEach(card => {
@@ -196,121 +139,83 @@ class TerminalBoot {
         });
         
         // Pay Button
-        elements.payButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.showPaymentMethods();
-        });
+        elements.payButton.addEventListener('click', this.showPaymentMethods.bind(this));
         
         // Payment Methods
-        document.getElementById('sberPayment')?.addEventListener('click', (e) => {
+        document.getElementById('sberPayment').addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             this.processPayment('sber');
         });
         
-        document.getElementById('cardPayment')?.addEventListener('click', (e) => {
+        document.getElementById('cardPayment').addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             this.processPayment('card');
         });
         
-        document.getElementById('sbpPayment')?.addEventListener('click', (e) => {
+        document.getElementById('sbpPayment').addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             this.processPayment('sbp');
         });
         
         // Auth Button
-        elements.authButton?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleAuthButtons();
-        });
+        elements.authButton.addEventListener('click', this.toggleAuthButtons.bind(this));
         
         // Social Auth Buttons
-        elements.googleAuth?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.handleSocialAuth('google');
-        });
-        
-        elements.telegramAuth?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.handleSocialAuth('telegram');
-        });
-        
-        elements.miaAuth?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.handleSocialAuth('mia');
-        });
-        
-        elements.vkAuth?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.handleSocialAuth('vk');
-        });
+        elements.googleAuth.addEventListener('click', () => this.handleSocialAuth('google'));
+        elements.telegramAuth.addEventListener('click', () => this.handleSocialAuth('telegram'));
+        elements.miaAuth.addEventListener('click', () => this.handleSocialAuth('mia'));
+        elements.vkAuth.addEventListener('click', () => this.handleSocialAuth('vk'));
         
         // Menu Items
-        document.getElementById('paymentItem')?.addEventListener('click', (e) => {
+        document.getElementById('paymentItem').addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             this.showPaymentManagement();
         });
         
-        document.getElementById('transactionsItem')?.addEventListener('click', (e) => {
+        document.getElementById('transactionsItem').addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             this.showTransactions();
         });
         
-        document.getElementById('referralItem')?.addEventListener('click', (e) => {
+        document.getElementById('referralItem').addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             this.showReferralProgram();
         });
         
-        document.getElementById('supportItem')?.addEventListener('click', (e) => {
+        document.getElementById('supportItem').addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             this.openTelegramSupport();
         });
         
-        // Закрытие меню при клике снаружи
+        // Terms link is already handled by href attribute
+        
+        // Close menus when clicking outside
         document.addEventListener('click', (e) => {
-            if (elements.settingsMenu && elements.settingsMenu.style.display === 'flex') {
-                if (!elements.settingsMenu.contains(e.target) && 
-                    !elements.settingsBtn.contains(e.target) &&
-                    !elements.closeSettingsMenu.contains(e.target)) {
-                    this.closeSettingsMenu();
-                }
+            if (!elements.settingsBtn.contains(e.target) && 
+                !elements.settingsMenu.contains(e.target) &&
+                elements.settingsMenu.style.display === 'flex') {
+                this.closeSettingsMenu();
             }
             
-            if (elements.supportMenu && elements.supportMenu.style.display === 'flex') {
-                if (!elements.supportMenu.contains(e.target) && 
-                    !elements.supportBtn.contains(e.target)) {
-                    this.closeSupportMenu();
-                }
-            }
-            
-            if (elements.subscriptionMenu && elements.subscriptionMenu.style.display === 'flex') {
-                if (!elements.subscriptionMenu.contains(e.target) && 
-                    !elements.subscribeBtn.contains(e.target) &&
-                    !elements.closeSubscriptionMenu.contains(e.target)) {
-                    this.closeSubscriptionMenu();
-                }
+            if (!elements.supportBtn.contains(e.target) && 
+                !elements.supportMenu.contains(e.target) &&
+                elements.supportMenu.style.display === 'flex') {
+                this.closeSupportMenu();
             }
         });
         
-        // Обработка клавиши Escape
+        // Handle escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.closeAllMenus();
             }
         });
         
-        // Обработка жестов на мобильных устройствах
+        // Handle mobile gestures
         this.setupMobileGestures();
     }
 
     openSettingsMenu() {
-        console.log("Opening settings menu");
         elements.settingsMenu.style.display = 'flex';
         setTimeout(() => {
             elements.settingsMenu.classList.remove('closing');
@@ -318,17 +223,18 @@ class TerminalBoot {
     }
 
     closeSettingsMenu() {
-        console.log("Closing settings menu");
         elements.settingsMenu.classList.add('closing');
         setTimeout(() => {
             elements.settingsMenu.style.display = 'none';
             elements.settingsMenu.classList.remove('closing');
+            
+            // Reset auth buttons to initial state
             this.resetAuthButtons();
         }, 300);
     }
 
     openSubscriptionMenu(e) {
-        console.log("Opening subscription menu");
+        e.preventDefault();
         elements.subscriptionMenu.style.display = 'flex';
         setTimeout(() => {
             elements.subscriptionMenu.classList.remove('closing');
@@ -336,13 +242,12 @@ class TerminalBoot {
     }
 
     closeSubscriptionMenu() {
-        console.log("Closing subscription menu");
         elements.subscriptionMenu.classList.add('closing');
         setTimeout(() => {
             elements.subscriptionMenu.style.display = 'none';
             elements.subscriptionMenu.classList.remove('closing');
-            if (elements.paymentMethods) elements.paymentMethods.style.display = 'none';
-            if (elements.payButton) elements.payButton.style.display = 'block';
+            elements.paymentMethods.style.display = 'none';
+            elements.payButton.style.display = 'block';
             this.resetPlanSelection();
         }, 300);
     }
@@ -356,7 +261,6 @@ class TerminalBoot {
     }
 
     openSupportMenu() {
-        console.log("Opening support menu");
         elements.supportMenu.style.display = 'flex';
         setTimeout(() => {
             elements.supportMenu.classList.remove('closing');
@@ -364,7 +268,6 @@ class TerminalBoot {
     }
 
     closeSupportMenu() {
-        console.log("Closing support menu");
         elements.supportMenu.classList.add('closing');
         setTimeout(() => {
             elements.supportMenu.style.display = 'none';
@@ -373,20 +276,18 @@ class TerminalBoot {
     }
 
     closeAllMenus() {
-        if (elements.settingsMenu && elements.settingsMenu.style.display === 'flex') {
+        if (elements.settingsMenu.style.display === 'flex') {
             this.closeSettingsMenu();
         }
-        if (elements.subscriptionMenu && elements.subscriptionMenu.style.display === 'flex') {
+        if (elements.subscriptionMenu.style.display === 'flex') {
             this.closeSubscriptionMenu();
         }
-        if (elements.supportMenu && elements.supportMenu.style.display === 'flex') {
+        if (elements.supportMenu.style.display === 'flex') {
             this.closeSupportMenu();
         }
     }
 
     toggleAuthButtons() {
-        if (!elements.socialAuthButtons || !elements.authButton) return;
-        
         if (elements.socialAuthButtons.style.display === 'none' || 
             elements.socialAuthButtons.style.display === '') {
             this.showSocialAuthButtons();
@@ -396,15 +297,15 @@ class TerminalBoot {
     }
 
     showSocialAuthButtons() {
-        if (!elements.socialAuthButtons || !elements.authButton) return;
-        
+        // Hide main auth button with animation
         elements.authButton.style.opacity = '0';
         elements.authButton.style.transform = 'translateY(-10px)';
         
         setTimeout(() => {
             elements.authButton.style.display = 'none';
-            elements.socialAuthButtons.style.display = 'grid';
+            elements.socialAuthButtons.style.display = 'flex';
             
+            // Animate social buttons in
             setTimeout(() => {
                 elements.socialAuthButtons.style.opacity = '0';
                 elements.socialAuthButtons.style.transform = 'translateY(10px)';
@@ -412,27 +313,27 @@ class TerminalBoot {
                 setTimeout(() => {
                     elements.socialAuthButtons.style.opacity = '1';
                     elements.socialAuthButtons.style.transform = 'translateY(0)';
-                    elements.socialAuthButtons.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                    elements.socialAuthButtons.style.transition = 'all 0.3s ease';
                     
+                    // Animate each button with delay
                     const buttons = elements.socialAuthButtons.children;
                     Array.from(buttons).forEach((button, index) => {
                         button.style.opacity = '0';
                         button.style.transform = 'scale(0.8)';
                         
                         setTimeout(() => {
-                            button.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                            button.style.transition = 'all 0.3s ease';
                             button.style.opacity = '1';
                             button.style.transform = 'scale(1)';
-                        }, index * 100);
+                        }, index * 80);
                     });
                 }, 50);
             }, 10);
-        }, 200);
+        }, 150);
     }
 
     hideSocialAuthButtons() {
-        if (!elements.socialAuthButtons || !elements.authButton) return;
-        
+        // Animate social buttons out
         const buttons = elements.socialAuthButtons.children;
         Array.from(buttons).forEach((button, index) => {
             setTimeout(() => {
@@ -448,14 +349,12 @@ class TerminalBoot {
             setTimeout(() => {
                 elements.authButton.style.opacity = '1';
                 elements.authButton.style.transform = 'translateY(0)';
-                elements.authButton.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                elements.authButton.style.transition = 'all 0.3s ease';
             }, 50);
-        }, 300);
+        }, 250);
     }
 
     resetAuthButtons() {
-        if (!elements.socialAuthButtons || !elements.authButton) return;
-        
         elements.authButton.style.display = 'flex';
         elements.authButton.style.opacity = '1';
         elements.authButton.style.transform = 'translateY(0)';
@@ -478,35 +377,40 @@ class TerminalBoot {
         console.log(`Social auth with ${provider}`);
         this.showNotification(`Авторизация через ${provider} будет реализована позже`);
         
+        // Simulate successful login
         setTimeout(() => {
             AppState.userLoggedIn = true;
             this.showNotification('Успешная авторизация!');
             this.hideSocialAuthButtons();
             
-            if (elements.authButton) {
-                elements.authButton.innerHTML = `
-                    <div class="auth-main-text">Профиль</div>
-                    <div class="auth-sub-text">Вы вошли в систему</div>
-                `;
-                elements.authButton.style.background = 'linear-gradient(135deg, #00ff88, #00ccff)';
-            }
+            // Update UI for logged in state
+            elements.authButton.innerHTML = `
+                <div class="auth-main-text">Профиль</div>
+                <div class="auth-sub-text">Вы вошли в систему</div>
+            `;
+            elements.authButton.style.background = 'linear-gradient(135deg, #00ff88, #00ccff)';
         }, 1000);
     }
 
     selectPlan(card) {
+        // Remove selection from all cards
         elements.planCards.forEach(c => {
             c.classList.remove('selected');
             c.style.transform = '';
         });
         
+        // Add selection to clicked card
         card.classList.add('selected');
-        card.style.transform = 'scale(1.08)';
+        card.style.transform = 'scale(1.02)';
         
+        // Store selected plan
         AppState.selectedPlan = {
             plan: card.dataset.plan,
             price: card.dataset.price,
             duration: card.querySelector('.plan-duration').textContent
         };
+        
+        console.log('Selected plan:', AppState.selectedPlan);
     }
 
     resetPlanSelection() {
@@ -523,37 +427,48 @@ class TerminalBoot {
             return;
         }
         
-        if (elements.payButton) elements.payButton.style.display = 'none';
-        if (elements.paymentMethods) {
-            elements.paymentMethods.style.display = 'flex';
+        elements.payButton.style.display = 'none';
+        elements.paymentMethods.style.display = 'flex';
+        
+        // Animate payment methods
+        const methods = elements.paymentMethods.children;
+        Array.from(methods).forEach((method, index) => {
+            method.style.opacity = '0';
+            method.style.transform = 'translateX(20px)';
             
-            const methods = elements.paymentMethods.children;
-            Array.from(methods).forEach((method, index) => {
-                method.style.opacity = '0';
-                method.style.transform = 'translateX(20px)';
-                
-                setTimeout(() => {
-                    method.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                    method.style.opacity = '1';
-                    method.style.transform = 'translateX(0)';
-                }, index * 100);
-            });
-        }
+            setTimeout(() => {
+                method.style.transition = 'all 0.3s ease';
+                method.style.opacity = '1';
+                method.style.transform = 'translateX(0)';
+            }, index * 80);
+        });
     }
 
     processPayment(method) {
         if (!AppState.selectedPlan) return;
         
-        console.log('Processing payment with method:', method);
+        const paymentData = {
+            method: method,
+            plan: AppState.selectedPlan.plan,
+            amount: AppState.selectedPlan.price,
+            timestamp: new Date().toISOString(),
+            status: 'pending'
+        };
+        
+        console.log('Processing payment:', paymentData);
+        
+        // Simulate payment processing
         this.showPaymentProcessing(method);
     }
 
     showPaymentProcessing(method) {
         let message = '';
+        let redirectUrl = '#';
         
         switch(method) {
             case 'sber':
                 message = 'Перенаправление в СберБанк Онлайн...';
+                redirectUrl = 'sberbank://payment';
                 break;
             case 'card':
                 message = 'Открытие формы оплаты картой...';
@@ -565,11 +480,14 @@ class TerminalBoot {
         
         this.showNotification(message);
         
+        // Simulate redirect after delay
         setTimeout(() => {
-            this.showNotification('Оплата успешна! Подписка активирована.');
-            AppState.userSubscribed = true;
-            if (elements.subscribeBtn) elements.subscribeBtn.textContent = 'Продлить подписку';
-            this.closeSubscriptionMenu();
+            if (method === 'sber' || method === 'sbp') {
+                this.showNotification('Оплата успешна! Подписка активирована.');
+                AppState.userSubscribed = true;
+                elements.subscribeBtn.textContent = 'Продлить подписку';
+                this.closeSubscriptionMenu();
+            }
         }, 2000);
     }
 
@@ -590,6 +508,7 @@ class TerminalBoot {
     }
 
     showNotification(message) {
+        // Create notification element
         const notification = document.createElement('div');
         notification.className = 'notification';
         notification.textContent = message;
@@ -598,33 +517,33 @@ class TerminalBoot {
             top: 20px;
             left: 50%;
             transform: translateX(-50%) translateY(-20px);
-            background: rgba(25, 25, 25, 0.98);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 16px;
-            padding: 14px 24px;
+            background: rgba(25, 25, 25, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 20px;
             color: white;
-            font-size: 15px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
             z-index: 10000;
             opacity: 0;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-            max-width: 90%;
-            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         `;
         
         document.body.appendChild(notification);
         
+        // Animate in
         setTimeout(() => {
             notification.style.opacity = '1';
             notification.style.transform = 'translateX(-50%) translateY(0)';
         }, 10);
         
+        // Remove after delay
         setTimeout(() => {
             notification.style.opacity = '0';
             notification.style.transform = 'translateX(-50%) translateY(-20px)';
-            setTimeout(() => notification.remove(), 400);
+            setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
 
@@ -638,11 +557,13 @@ class TerminalBoot {
         }, { passive: true });
         
         document.addEventListener('touchmove', (e) => {
+            // Prevent rubber-band scrolling on iOS
             if (e.cancelable && document.body.scrollTop === 0 && e.touches[0].clientY > startY) {
                 e.preventDefault();
             }
         }, { passive: false });
         
+        // Prevent zoom on double tap
         let lastTouchEnd = 0;
         document.addEventListener('touchend', (e) => {
             const now = Date.now();
@@ -650,57 +571,4 @@ class TerminalBoot {
                 e.preventDefault();
             }
             lastTouchEnd = now;
-        }, { passive: false });
-    }
-
-    startBackgroundAnimation() {
-        // Фоновая анимация управляется CSS
-    }
-}
-
-// Инициализация приложения
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded, starting app");
-    
-    // Сначала проверяем, что все элементы существуют
-    if (!elements.terminalScreen || !elements.mainApp) {
-        console.error("Required elements not found!");
-        // Показываем main-app если терминал не найден
-        if (elements.mainApp) {
-            elements.mainApp.style.display = 'block';
-            elements.mainApp.classList.add('active');
-            new TerminalBoot().initializeMainApp();
-        }
-        return;
-    }
-    
-    const app = new TerminalBoot();
-    app.start();
-    
-    // Установка высоты viewport для мобильных устройств
-    const setVH = () => {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-    
-    setVH();
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', setVH);
-    
-    // Обработка появления клавиатуры на мобильных устройствах
-    const handleKeyboard = () => {
-        if (window.innerHeight < 500) {
-            document.body.style.height = '100vh';
-            setTimeout(() => {
-                window.scrollTo(0, 0);
-            }, 100);
-        }
-    };
-    
-    window.addEventListener('resize', handleKeyboard);
-});
-
-// Для отладки
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { AppState, TerminalBoot };
-}
+        }, { passive
