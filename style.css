@@ -1,4 +1,4 @@
- *{
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -64,7 +64,7 @@ body, html {
 .terminal-line {
     color: #fff;
     margin-bottom: 8px;
-    animation: typeLine 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation: typeLine 0.3s ease forwards;
     opacity: 0;
     transform: translateY(10px);
     word-break: break-word;
@@ -104,7 +104,7 @@ body, html {
     to { opacity: 1; }
 }
 
-/* Animated Gradient Background */
+/* Animated Gradient Background - Более медленная анимация */
 .gradient-background {
     position: absolute;
     top: 0;
@@ -121,7 +121,7 @@ body, html {
     border-radius: 50%;
     filter: blur(80px);
     opacity: 0.6;
-    animation-duration: 15s;
+    animation-duration: 25s; /* Увеличено с 15s */
     animation-iteration-count: infinite;
     animation-timing-function: ease-in-out;
 }
@@ -165,26 +165,26 @@ body, html {
 
 @keyframes float-1 {
     0%, 100% { transform: translate(0, 0) scale(1); }
-    33% { transform: translate(10vw, 10vh) scale(1.1); }
-    66% { transform: translate(-5vw, -5vh) scale(0.9); }
+    33% { transform: translate(10vw, 10vh) scale(1.05); } /* Уменьшено масштабирование */
+    66% { transform: translate(-5vw, -5vh) scale(0.95); }
 }
 
 @keyframes float-2 {
     0%, 100% { transform: translate(0, 0) scale(1); }
-    33% { transform: translate(-8vw, -8vh) scale(1.1); }
-    66% { transform: translate(12vw, 6vh) scale(0.9); }
+    33% { transform: translate(-8vw, -8vh) scale(1.05); }
+    66% { transform: translate(12vw, 6vh) scale(0.95); }
 }
 
 @keyframes float-3 {
     0%, 100% { transform: translate(-50%, -50%) scale(1); }
-    33% { transform: translate(-60%, -40%) scale(1.2); }
-    66% { transform: translate(-40%, -60%) scale(0.8); }
+    33% { transform: translate(-60%, -40%) scale(1.1); } /* Уменьшено масштабирование */
+    66% { transform: translate(-40%, -60%) scale(0.9); }
 }
 
 @keyframes float-4 {
     0%, 100% { transform: translate(0, 0) scale(1); }
-    33% { transform: translate(15vw, -10vh) scale(1.1); }
-    66% { transform: translate(-10vw, 15vh) scale(0.9); }
+    33% { transform: translate(15vw, -10vh) scale(1.05); }
+    66% { transform: translate(-10vw, 15vh) scale(0.95); }
 }
 
 /* Main Content */
@@ -201,7 +201,7 @@ body, html {
 
 .logo {
     text-align: center;
-    animation: slideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation: slideUp 0.8s ease forwards; /* Упрощена анимация */
     opacity: 0;
     transform: translateY(30px);
 }
@@ -216,20 +216,13 @@ body, html {
 .logo h1 {
     font-size: clamp(96px, 25vw, 128px);
     font-weight: 900;
-    background: linear-gradient(45deg, #ff0066, #ff6600, #ff0066);
+    background: linear-gradient(45deg, #ff0066, #ff6600); /* Убран анимированный градиент */
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: -4px;
     margin-bottom: 5px;
     text-shadow: 0 8px 40px rgba(255, 0, 100, 0.4);
-    background-size: 200% auto;
-    animation: gradientFlow 3s ease-in-out infinite;
-}
-
-@keyframes gradientFlow {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
 }
 
 .ai-subtitle {
@@ -260,7 +253,7 @@ body, html {
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease; /* Упрощена анимация */
     position: relative;
     overflow: hidden;
     cursor: pointer;
@@ -279,7 +272,7 @@ body, html {
         rgba(255, 255, 255, 0.05) 50%,
         rgba(255, 255, 255, 0.1) 100%);
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s ease;
 }
 
 .btn-circle:hover::before, .btn-pill:hover::before {
@@ -349,7 +342,7 @@ body, html {
     justify-content: center;
     padding: 20px;
     opacity: 0;
-    animation: overlayFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: overlayFadeIn 0.3s ease forwards; /* Упрощена анимация */
 }
 
 @keyframes overlayFadeIn {
@@ -377,7 +370,7 @@ body, html {
         0 25px 80px rgba(0, 0, 0, 0.6),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transform: translateY(10px);
-    animation: contentSlideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards;
+    animation: contentSlideUp 0.4s ease 0.1s forwards; /* Упрощена анимация */
     position: relative;
     max-height: 85vh;
     overflow-y: auto;
@@ -405,7 +398,7 @@ body, html {
     color: white;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease; /* Упрощена анимация */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -415,8 +408,8 @@ body, html {
 }
 
 .auth-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(255, 0, 100, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 0, 100, 0.3);
 }
 
 .auth-button:active {
@@ -436,22 +429,23 @@ body, html {
 }
 
 .social-auth-buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
     margin-top: 5px;
+    flex-wrap: wrap; /* Для маленьких экранов */
 }
 
 .social-auth-btn {
-    width: 56px;
-    height: 56px;
+    width: 48px; /* Уменьшен размер */
+    height: 48px; /* Уменьшен размер */
     border-radius: 50%;
     border: none;
     background: rgba(40, 40, 40, 0.9);
     color: white;
-    font-size: 20px;
+    font-size: 18px; /* Уменьшен размер иконки */
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.2s ease; /* Упрощена анимация */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -461,16 +455,16 @@ body, html {
 }
 
 .social-auth-btn:hover {
-    transform: translateY(-3px) scale(1.1);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .social-auth-btn:active {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
 }
 
 .social-auth-btn span {
-    font-size: 12px;
+    font-size: 11px; /* Уменьшен размер текста */
     font-weight: 700;
     background: linear-gradient(45deg, #ff0066, #ff6600);
     -webkit-background-clip: text;
@@ -512,7 +506,7 @@ body, html {
     gap: 14px;
     font-size: 16px;
     font-weight: 500;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease; /* Упрощена анимация */
     cursor: pointer;
 }
 
@@ -523,8 +517,8 @@ body, html {
 .menu-item:hover {
     background: rgba(50, 50, 50, 0.95);
     border-color: rgba(255, 0, 100, 0.4);
-    transform: translateX(8px);
-    box-shadow: 0 8px 20px rgba(255, 0, 100, 0.15);
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(255, 0, 100, 0.1);
 }
 
 .menu-item i {
@@ -549,13 +543,13 @@ body, html {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease; /* Упрощена анимация */
     z-index: 1001;
 }
 
 .close-menu:hover {
     background: rgba(255, 255, 255, 0.18);
-    transform: rotate(90deg) scale(1.1);
+    transform: rotate(90deg);
 }
 
 /* Subscription Menu */
@@ -567,26 +561,26 @@ body, html {
 .subscription-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
+    gap: 12px;
     width: 100%;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
 .plan-card {
     background: rgba(35, 35, 35, 0.95);
     border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 18px;
-    padding: 22px 15px;
+    padding: 20px 12px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease; /* Упрощена анимация */
     position: relative;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: center;
     aspect-ratio: 1;
-    min-height: 130px;
+    min-height: 125px;
 }
 
 .plan-card::before {
@@ -600,16 +594,14 @@ body, html {
         rgba(255, 0, 100, 0.1) 0%,
         rgba(255, 100, 0, 0.05) 100%);
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s ease;
 }
 
 .plan-card.selected {
     border-color: #ff0066;
-    background: linear-gradient(135deg, 
-        rgba(40, 40, 40, 0.95) 0%,
-        rgba(255, 0, 100, 0.2) 100%);
-    transform: scale(1.08);
-    box-shadow: 0 15px 40px rgba(255, 0, 100, 0.25);
+    background: rgba(40, 40, 40, 0.95);
+    transform: scale(1.02); /* Уменьшено масштабирование */
+    box-shadow: 0 8px 25px rgba(255, 0, 100, 0.2);
 }
 
 .plan-card.selected::before {
@@ -618,14 +610,14 @@ body, html {
 
 .plan-card:hover {
     border-color: rgba(255, 0, 100, 0.5);
-    transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 15px 40px rgba(255, 0, 100, 0.25);
+    transform: translateY(-2px); /* Убрано масштабирование */
+    box-shadow: 0 8px 20px rgba(255, 0, 100, 0.15);
 }
 
 .plan-duration {
-    font-size: clamp(17px, 4vw, 19px);
+    font-size: clamp(16px, 4vw, 18px);
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     background: linear-gradient(45deg, #ff0066, #ff6600);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -635,18 +627,17 @@ body, html {
 }
 
 .plan-price {
-    font-size: clamp(20px, 5vw, 24px);
-    font-weight: 800;
+    font-size: clamp(18px, 5vw, 22px);
+    font-weight: 700;
     color: white;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     position: relative;
     z-index: 1;
 }
 
 .plan-savings {
-    font-size: clamp(12px, 3vw, 14px);
+    font-size: clamp(11px, 3vw, 13px);
     color: #00ff88;
-    font-weight: 600;
     position: relative;
     z-index: 1;
 }
@@ -654,18 +645,17 @@ body, html {
 .pay-button {
     background: linear-gradient(135deg, #ff0066, #ff6600);
     border: none;
-    border-radius: 20px;
-    padding: 20px;
+    border-radius: 18px;
+    padding: 18px;
     color: white;
-    font-size: clamp(17px, 4vw, 19px);
-    font-weight: 800;
+    font-size: clamp(16px, 4vw, 18px);
+    font-weight: 700;
     width: 100%;
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease; /* Упрощена анимация */
     margin-top: 5px;
     position: relative;
     overflow: hidden;
-    letter-spacing: 0.5px;
 }
 
 .pay-button::after {
@@ -677,14 +667,14 @@ body, html {
     height: 100%;
     background: linear-gradient(90deg, 
         transparent 0%,
-        rgba(255, 255, 255, 0.25) 50%,
+        rgba(255, 255, 255, 0.2) 50%,
         transparent 100%);
-    transition: left 0.7s;
+    transition: left 0.6s ease;
 }
 
 .pay-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 40px rgba(255, 0, 100, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 0, 100, 0.3);
 }
 
 .pay-button:hover::after {
@@ -698,42 +688,36 @@ body, html {
 .payment-methods {
     display: none;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
-    margin-top: 25px;
-    animation: fadeIn 0.5s ease;
+    margin-top: 20px;
+    animation: fadeIn 0.3s ease;
 }
 
 .payment-method {
     background: rgba(40, 40, 40, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 18px;
+    border-radius: 14px;
+    padding: 16px;
     color: white;
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    font-size: 15px;
+    transition: all 0.3s ease; /* Упрощена анимация */
+    font-size: 14px;
     font-weight: 500;
 }
 
 .payment-method:hover {
     background: rgba(50, 50, 50, 0.95);
-    border-color: rgba(255, 0, 100, 0.4);
-    transform: translateX(5px);
-    box-shadow: 0 8px 20px rgba(255, 0, 100, 0.15);
+    border-color: rgba(255, 0, 100, 0.3);
+    transform: translateX(3px);
 }
 
 .payment-method i {
     color: #ff0066;
-    font-size: 15px;
-    transition: transform 0.3s;
-}
-
-.payment-method:hover i {
-    transform: translateX(3px);
+    font-size: 14px;
 }
 
 /* Support Menu */
@@ -741,22 +725,22 @@ body, html {
     position: fixed;
     bottom: 100px;
     right: 20px;
-    background: rgba(25, 25, 25, 0.98);
-    backdrop-filter: blur(40px);
-    -webkit-backdrop-filter: blur(40px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 20px;
-    padding: 20px;
-    width: 300px;
+    background: rgba(25, 25, 25, 0.97);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 18px;
+    width: 280px;
     display: none;
     flex-direction: column;
     z-index: 1000;
     opacity: 0;
-    transform: translateY(15px);
-    animation: supportSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    transform: translateY(10px);
+    animation: supportSlideUp 0.3s ease forwards;
     box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        0 15px 40px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @keyframes supportSlideUp {
@@ -773,52 +757,52 @@ body, html {
 @keyframes supportSlideDown {
     to {
         opacity: 0;
-        transform: translateY(15px);
+        transform: translateY(10px);
     }
 }
 
 .support-item {
     background: rgba(40, 40, 40, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 18px;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 15px;
     color: rgba(255, 255, 255, 0.9);
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.4;
 }
 
 .support-item strong {
     color: white;
     display: block;
-    margin-bottom: 8px;
-    font-size: 15px;
+    margin-bottom: 6px;
+    font-size: 14px;
 }
 
 .support-link {
     background: linear-gradient(135deg, #0066ff, #00aaff);
     border: none;
-    border-radius: 16px;
-    padding: 18px;
+    border-radius: 14px;
+    padding: 16px;
     color: white;
     text-decoration: none;
     text-align: center;
-    font-weight: 700;
-    font-size: 16px;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.3s ease; /* Упрощена анимация */
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .support-link:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(0, 102, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 102, 255, 0.4);
 }
 
 .support-link i {
-    font-size: 17px;
+    font-size: 16px;
 }
 
 /* Mobile Optimizations */
@@ -841,12 +825,12 @@ body, html {
     }
     
     .subscription-grid {
-        gap: 12px;
+        gap: 10px;
     }
     
     .plan-card {
-        padding: 18px 12px;
-        min-height: 120px;
+        padding: 15px 10px;
+        min-height: 115px;
     }
     
     .support-overlay {
@@ -870,13 +854,17 @@ body, html {
     }
     
     .social-auth-buttons {
-        gap: 10px;
+        gap: 8px;
     }
     
     .social-auth-btn {
-        width: 52px;
-        height: 52px;
-        font-size: 18px;
+        width: 44px;
+        height: 44px;
+        font-size: 16px;
+    }
+    
+    .social-auth-btn span {
+        font-size: 10px;
     }
     
     .auth-button {
@@ -906,26 +894,35 @@ body, html {
     }
     
     .menu-item {
-        padding: 16px;
-        font-size: 15px;
+        padding: 14px;
+        font-size: 14px;
     }
     
     .plan-card {
-        min-height: 110px;
-        padding: 16px 10px;
+        min-height: 105px;
+        padding: 14px 8px;
     }
     
     .plan-duration {
-        font-size: 16px;
+        font-size: 15px;
     }
     
     .plan-price {
-        font-size: 20px;
+        font-size: 18px;
     }
     
     .social-auth-buttons {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 6px;
+    }
+    
+    .social-auth-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+    
+    .social-auth-btn span {
+        font-size: 9px;
     }
 }
 
@@ -940,40 +937,4 @@ body, html {
 .terminal-screen::-webkit-scrollbar,
 #terminalContent::-webkit-scrollbar {
     width: 0;
-    background: transparent;
-}
-
-/* Loading animation for terminal */
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-}
-
-.terminal-line:last-child::after {
-    content: '_';
-    animation: blink 1s infinite;
-}
-
-/* Scrollbar styling for menu content */
-.menu-content::-webkit-scrollbar,
-.subscription-content::-webkit-scrollbar {
-    width: 6px;
-}
-
-.menu-content::-webkit-scrollbar-track,
-.subscription-content::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
-}
-
-.menu-content::-webkit-scrollbar-thumb,
-.subscription-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #ff0066, #ff6600);
-    border-radius: 3px;
-}
-
-.menu-content::-webkit-scrollbar-thumb:hover,
-.subscription-content::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #ff0066, #ff6600);
-    opacity: 0.8;
-}
+    backgr
