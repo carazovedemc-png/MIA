@@ -6,21 +6,18 @@
     <title>MIA AI Assistant</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <!-- Google Sign-In API -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <!-- Terminal Loading Screen -->
     <div class="terminal-screen" id="terminalScreen">
-        <!-- Кнопка скипа анимации -->
-        <button class="skip-terminal" id="skipTerminalBtn">
-            <i class="fas fa-forward"></i>
-        </button>
         <div id="terminalContent"></div>
+        <!-- Кнопка скипа анимации (внизу) -->
+        <button class="skip-button" id="skipButton">
+            Пропустить загрузку <i class="fas fa-forward"></i>
+        </button>
     </div>
-
-    <!-- Аудио для звука печати в терминале -->
-    <audio id="typeSound" preload="auto">
-        <!-- Звук будет сгенерирован через JS, поэтому оставляем пустым -->
-    </audio>
 
     <!-- Main Application -->
     <div class="main-app" id="mainApp">
@@ -34,36 +31,52 @@
                 <h1>MIA</h1>
                 <p class="ai-subtitle">ai assistant</p>
             </div>
+            
+            <!-- Google Sign-In Button -->
+            <div id="googleSignIn" class="google-signin-container">
+                <div id="g_id_onload"
+                    data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                    data-context="signin"
+                    data-ux_mode="popup"
+                    data-login_uri="https://your-backend.com/auth/google"
+                    data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin"
+                    data-type="standard"
+                    data-shape="rectangular"
+                    data-theme="filled_blue"
+                    data-text="signin_with"
+                    data-size="large"
+                    data-logo_alignment="left"
+                    data-width="300">
+                </div>
+                <p class="google-signin-note">Или войдите через Telegram</p>
+                <a href="https://t.me/EDEM_CR" target="_blank" class="telegram-auth-btn">
+                    <i class="fab fa-telegram"></i> Войти через Telegram
+                </a>
+            </div>
         </div>
 
         <!-- Bottom Navigation -->
         <div class="bottom-nav fade-in">
-            <!-- Settings Button -->
             <button class="btn-circle" id="settingsBtn">
                 <i class="fas fa-cog"></i>
             </button>
-
-            <!-- Subscribe Button -->
             <a href="#" class="btn-pill" id="subscribeBtn">
                 Подписаться
             </a>
-
-            <!-- Support Button -->
             <button class="btn-circle" id="supportBtn">
                 <i class="fas fa-comment"></i>
             </button>
         </div>
 
+        <!-- ... остальные меню (settingsMenu, subscriptionMenu, supportMenu) остаются без изменений ... -->
         <!-- Settings Menu -->
         <div class="menu-overlay" id="settingsMenu">
             <button class="close-menu" id="closeSettingsMenu">
                 <i class="fas fa-times"></i>
             </button>
             <div class="menu-content slide-up">
-                <!-- Пункт для входа через Google -->
-                <a href="#" class="menu-item" id="googleAuthItem">
-                    <i class="fab fa-google"></i> Войти через Google
-                </a>
                 <a href="#" class="menu-item" id="paymentItem">
                     <i class="fas fa-credit-card"></i> Оплата
                 </a>
