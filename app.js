@@ -571,4 +571,39 @@ class TerminalBoot {
                 e.preventDefault();
             }
             lastTouchEnd = now;
-        }, { passive
+        }, { passive: false });
+    }
+}
+
+// Initialize application when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    const app = new TerminalBoot();
+    app.start();
+    
+    // Handle viewport height on mobile
+    const setVH = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+    
+    // Handle keyboard appearance on mobile
+    const handleKeyboard = () => {
+        if (window.innerHeight < 500) {
+            document.body.style.height = '100vh';
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+            }, 100);
+        }
+    };
+    
+    window.addEventListener('resize', handleKeyboard);
+});
+
+// Export for debugging
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { AppState, TerminalBoot };
+}
