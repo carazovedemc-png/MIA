@@ -5,9 +5,8 @@ const AppState = {
     terminalLoaded: false,
     selectedPlan: null,
     userSubscribed: false,
-    currentScreen: 'terminal',
-    userAuthenticated: false,
-    authMethod: null // 'google', 'telegram', или null
+    userLoggedIn: false, // Added login state
+    currentScreen: 'terminal'
 };
 
 // DOM Elements
@@ -26,11 +25,16 @@ const elements = {
     planCards: document.querySelectorAll('.plan-card'),
     payButton: document.getElementById('payButton'),
     paymentMethods: document.getElementById('paymentMethods'),
-    skipButton: document.getElementById('skipButton'),
-    googleSignIn: document.getElementById('googleSignIn')
+    authButton: document.getElementById('authButton'),
+    socialAuthButtons: document.getElementById('socialAuthButtons'),
+    googleAuth: document.getElementById('googleAuth'),
+    telegramAuth: document.getElementById('telegramAuth'),
+    miaAuth: document.getElementById('miaAuth'),
+    vkAuth: document.getElementById('vkAuth'),
+    typeSound: document.getElementById('typeSound')
 };
 
-// Terminal Boot Sequence (English only)
+// Terminal Boot Sequence (English only) - Ускоренная анимация
 const bootMessages = [
     "[SYSTEM] Initializing MIA AI Core...",
     "[OK] Loading neural network modules...",
@@ -46,82 +50,73 @@ const bootMessages = [
 class TerminalBoot {
     constructor() {
         this.messageIndex = 0;
-        this.lineDelay = 200;
-        this.charDelay = 30;
-        this.bootTimeout = null;
-        this.skipRequested = false;
+        this.lineDelay = 120; // Ускорено с 200
+        this.charDelay = 15; // Ускорено с 30
+        this.soundPlayed = false;
     }
 
     async start() {
-        // Показываем fallback сразу для предотвращения черного экрана
-        this.showLoadingFallback();
-        
         return new Promise((resolve) => {
-            this.bootTimeout = setTimeout(() => {
-                if (!this.skipRequested) {
-                    this.showNextMessage(resolve);
-                }
-            }, 300); // Небольшая задержка перед началом анимации
+            // Начинаем воспроизведение звука после первого взаимодействия
+            this.setupSound();
+            this.showNextMessage(resolve);
         });
     }
 
-    showLoadingFallback() {
-        // Создаем fallback элемент на случай проблем с загрузкой
-        const fallback = document.createElement('div');
-        fallback.className = 'loading-fallback';
-        fallback.innerHTML = `
-            <div class="loading-spinner"></div>
-            <p>Loading MIA AI Assistant...</p>
-        `;
-        document.body.appendChild(fallback);
-        
-        // Убираем fallback когда приложение загрузится
-        setTimeout(() => {
-            if (fallback.parentNode) {
-                fallback.style.opacity = '0';
-                fallback.style.transition = 'opacity 0.5s ease';
+    setupSound() {
+        // Подготовка звука для воспроизведения при анимации
+        if (elements.typeSound) {
+            elements.typeSound.volume = 0.3;
+            elements.typeSound.loop = false;
+        }
+    }
+
+    playTypeSound() {
+        if (elements.typeSound && !this.soundPlayed) {
+            try {
+                // Воспроизводим звук с перемоткой в начало
+                elements.typeSound.currentTime = 0;
+                elements.typeSound.play().catch(e => {
+                    console.log("Audio play failed:", e);
+                });
+                this.soundPlayed = true;
+                
+                // Сбрасываем флаг через короткое время
                 setTimeout(() => {
-                    if (fallback.parentNode) {
-                        fallback.remove();
-                    }
-                }, 500);
+                    this.soundPlayed = false;
+                }, 300);
+            } catch (e) {
+                console.log("Sound error:", e);
             }
-        }, 2000);
+        }
     }
 
     showNextMessage(resolve) {
-        if (this.messageIndex >= bootMessages.length || this.skipRequested) {
-            this.hideLoadingFallback();
+        if (this.messageIndex >= bootMessages.length) {
             setTimeout(() => {
                 this.fadeOutTerminal();
                 resolve();
-            }, 700);
+            }, 400); // Ускорено с 700
             return;
         }
 
         const message = bootMessages[this.messageIndex];
+        
+        // Воспроизводим звук в начале печати каждой строки
+        if (this.messageIndex % 2 === 0) { // Каждую вторую строку
+            this.playTypeSound();
+        }
+        
         this.typeMessage(message, () => {
             this.messageIndex++;
             setTimeout(() => this.showNextMessage(resolve), this.lineDelay);
         });
     }
 
-    hideLoadingFallback() {
-        const fallback = document.querySelector('.loading-fallback');
-        if (fallback) {
-            fallback.style.opacity = '0';
-            setTimeout(() => {
-                if (fallback.parentNode) {
-                    fallback.remove();
-                }
-            }, 500);
-        }
-    }
-
     typeMessage(message, callback) {
         const line = document.createElement('div');
         line.className = 'terminal-line';
-        line.style.animationDelay = `${this.messageIndex * 0.1}s`;
+        line.style.animationDelay = `${this.messageIndex * 0.05}s`; // Ускорено
         elements.terminalContent.appendChild(line);
 
         let charIndex = 0;
@@ -130,6 +125,12 @@ class TerminalBoot {
             if (charIndex < message.length) {
                 line.textContent += message.charAt(charIndex);
                 charIndex++;
+                
+                // Иногда воспроизводим звук при печати символов
+                if (charIndex % 10 === 0 && this.messageIndex > 0) {
+                    this.playTypeSound();
+                }
+                
                 setTimeout(typeChar, this.charDelay);
             } else {
                 callback();
@@ -142,19 +143,6 @@ class TerminalBoot {
         elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
     }
 
-    skipBootSequence() {
-        this.skipRequested = true;
-        this.hideLoadingFallback();
-        
-        // Очищаем таймаут если он есть
-        if (this.bootTimeout) {
-            clearTimeout(this.bootTimeout);
-        }
-        
-        // Немедленно переходим к главному экрану
-        this.fadeOutTerminal();
-    }
-
     fadeOutTerminal() {
         elements.terminalScreen.classList.add('fade-out');
         setTimeout(() => {
@@ -162,66 +150,20 @@ class TerminalBoot {
             elements.mainApp.style.display = 'block';
             AppState.currentScreen = 'main';
             this.initializeMainApp();
-        }, 500);
+        }, 700); // Ускорено с 1000
     }
 
     initializeMainApp() {
-        // Проверяем авторизацию пользователя
-        if (!AppState.userAuthenticated) {
-            // Показываем Google Sign-In
-            this.initializeGoogleSignIn();
-        } else {
-            // Если уже авторизован, показываем основной интерфейс
-            this.showMainInterface();
-        }
-        
-        // Add event listeners
-        this.setupEventListeners();
-    }
-
-    initializeGoogleSignIn() {
-        // Инициализация Google Sign-In
-        if (window.google && window.google.accounts) {
-            console.log('Google Sign-In API loaded successfully');
-            
-            // Обработчик успешной авторизации
-            window.handleGoogleSignIn = (response) => {
-                console.log('Google Sign-In response:', response);
-                
-                // Здесь нужно отправить credential на ваш бэкенд
-                const credential = response.credential;
-                
-                // Симуляция успешной авторизации
-                AppState.userAuthenticated = true;
-                AppState.authMethod = 'google';
-                
-                // Скрываем Google Sign-In и показываем основной интерфейс
-                elements.googleSignIn.style.display = 'none';
-                this.showMainInterface();
-                
-                this.showNotification('Успешная авторизация через Google!');
-            };
-            
-            // Обработчик ошибок
-            window.handleGoogleError = (error) => {
-                console.error('Google Sign-In error:', error);
-                this.showNotification('Ошибка авторизации через Google. Попробуйте еще раз.');
-            };
-        } else {
-            console.warn('Google Sign-In API not loaded, showing fallback');
-            this.showNotification('Google Sign-In временно недоступен. Используйте вход через Telegram.');
-        }
-    }
-
-    showMainInterface() {
         // Update subscribe button text based on subscription status
         if (AppState.userSubscribed) {
             elements.subscribeBtn.textContent = 'Продлить подписку';
         }
         
-        // Показываем основной интерфейс
-        document.querySelector('.main-content').style.display = 'flex';
-        document.querySelector('.bottom-nav').style.display = 'flex';
+        // Add event listeners
+        this.setupEventListeners();
+        
+        // Initialize animations
+        this.startBackgroundAnimation();
     }
 
     setupEventListeners() {
@@ -260,27 +202,14 @@ class TerminalBoot {
             this.processPayment('sbp');
         });
         
-        // Кнопка скипа анимации
-        if (elements.skipButton) {
-            elements.skipButton.addEventListener('click', () => {
-                this.skipBootSequence();
-            });
-        }
+        // Auth Button
+        elements.authButton.addEventListener('click', this.toggleAuthButtons.bind(this));
         
-        // Авторизация через Telegram
-        const telegramAuthBtn = document.querySelector('.telegram-auth-btn');
-        if (telegramAuthBtn) {
-            telegramAuthBtn.addEventListener('click', (e) => {
-                if (!telegramAuthBtn.href.includes('#')) {
-                    e.preventDefault();
-                    AppState.userAuthenticated = true;
-                    AppState.authMethod = 'telegram';
-                    elements.googleSignIn.style.display = 'none';
-                    this.showMainInterface();
-                    this.showNotification('Авторизация через Telegram успешна!');
-                }
-            });
-        }
+        // Social Auth Buttons
+        elements.googleAuth.addEventListener('click', () => this.handleSocialAuth('google'));
+        elements.telegramAuth.addEventListener('click', () => this.handleSocialAuth('telegram'));
+        elements.miaAuth.addEventListener('click', () => this.handleSocialAuth('mia'));
+        elements.vkAuth.addEventListener('click', () => this.handleSocialAuth('vk'));
         
         // Menu Items
         document.getElementById('paymentItem').addEventListener('click', (e) => {
@@ -303,8 +232,16 @@ class TerminalBoot {
             this.openTelegramSupport();
         });
         
+        // Terms link is already handled by href attribute
+        
         // Close menus when clicking outside
         document.addEventListener('click', (e) => {
+            if (!elements.settingsBtn.contains(e.target) && 
+                !elements.settingsMenu.contains(e.target) &&
+                elements.settingsMenu.style.display === 'flex') {
+                this.closeSettingsMenu();
+            }
+            
             if (!elements.supportBtn.contains(e.target) && 
                 !elements.supportMenu.contains(e.target) &&
                 elements.supportMenu.style.display === 'flex') {
@@ -323,7 +260,298 @@ class TerminalBoot {
         this.setupMobileGestures();
     }
 
-    // ... остальные методы (openSettingsMenu, closeSettingsMenu и т.д.) остаются без изменений ...
+    openSettingsMenu() {
+        elements.settingsMenu.style.display = 'flex';
+        setTimeout(() => {
+            elements.settingsMenu.classList.remove('closing');
+        }, 10);
+    }
+
+    closeSettingsMenu() {
+        elements.settingsMenu.classList.add('closing');
+        setTimeout(() => {
+            elements.settingsMenu.style.display = 'none';
+            elements.settingsMenu.classList.remove('closing');
+            
+            // Reset auth buttons to initial state
+            this.resetAuthButtons();
+        }, 300);
+    }
+
+    openSubscriptionMenu(e) {
+        e.preventDefault();
+        elements.subscriptionMenu.style.display = 'flex';
+        setTimeout(() => {
+            elements.subscriptionMenu.classList.remove('closing');
+        }, 10);
+    }
+
+    closeSubscriptionMenu() {
+        elements.subscriptionMenu.classList.add('closing');
+        setTimeout(() => {
+            elements.subscriptionMenu.style.display = 'none';
+            elements.subscriptionMenu.classList.remove('closing');
+            elements.paymentMethods.style.display = 'none';
+            elements.payButton.style.display = 'block';
+            this.resetPlanSelection();
+        }, 300);
+    }
+
+    toggleSupportMenu() {
+        if (elements.supportMenu.style.display === 'flex') {
+            this.closeSupportMenu();
+        } else {
+            this.openSupportMenu();
+        }
+    }
+
+    openSupportMenu() {
+        elements.supportMenu.style.display = 'flex';
+        setTimeout(() => {
+            elements.supportMenu.classList.remove('closing');
+        }, 10);
+    }
+
+    closeSupportMenu() {
+        elements.supportMenu.classList.add('closing');
+        setTimeout(() => {
+            elements.supportMenu.style.display = 'none';
+            elements.supportMenu.classList.remove('closing');
+        }, 300);
+    }
+
+    closeAllMenus() {
+        if (elements.settingsMenu.style.display === 'flex') {
+            this.closeSettingsMenu();
+        }
+        if (elements.subscriptionMenu.style.display === 'flex') {
+            this.closeSubscriptionMenu();
+        }
+        if (elements.supportMenu.style.display === 'flex') {
+            this.closeSupportMenu();
+        }
+    }
+
+    // New methods for auth buttons
+    toggleAuthButtons() {
+        if (elements.socialAuthButtons.style.display === 'none' || 
+            elements.socialAuthButtons.style.display === '') {
+            this.showSocialAuthButtons();
+        } else {
+            this.hideSocialAuthButtons();
+        }
+    }
+
+    showSocialAuthButtons() {
+        // Hide main auth button with animation
+        elements.authButton.style.opacity = '0';
+        elements.authButton.style.transform = 'translateY(-10px)';
+        
+        setTimeout(() => {
+            elements.authButton.style.display = 'none';
+            elements.socialAuthButtons.style.display = 'grid';
+            
+            // Animate social buttons in
+            setTimeout(() => {
+                elements.socialAuthButtons.style.opacity = '0';
+                elements.socialAuthButtons.style.transform = 'translateY(10px)';
+                
+                setTimeout(() => {
+                    elements.socialAuthButtons.style.opacity = '1';
+                    elements.socialAuthButtons.style.transform = 'translateY(0)';
+                    elements.socialAuthButtons.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                    
+                    // Animate each button with delay
+                    const buttons = elements.socialAuthButtons.children;
+                    Array.from(buttons).forEach((button, index) => {
+                        button.style.opacity = '0';
+                        button.style.transform = 'scale(0.8)';
+                        
+                        setTimeout(() => {
+                            button.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                            button.style.opacity = '1';
+                            button.style.transform = 'scale(1)';
+                        }, index * 100);
+                    });
+                }, 50);
+            }, 10);
+        }, 200);
+    }
+
+    hideSocialAuthButtons() {
+        // Animate social buttons out
+        const buttons = elements.socialAuthButtons.children;
+        Array.from(buttons).forEach((button, index) => {
+            setTimeout(() => {
+                button.style.opacity = '0';
+                button.style.transform = 'scale(0.8)';
+            }, index * 50);
+        });
+        
+        setTimeout(() => {
+            elements.socialAuthButtons.style.display = 'none';
+            elements.authButton.style.display = 'flex';
+            
+            setTimeout(() => {
+                elements.authButton.style.opacity = '1';
+                elements.authButton.style.transform = 'translateY(0)';
+                elements.authButton.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            }, 50);
+        }, 300);
+    }
+
+    resetAuthButtons() {
+        elements.authButton.style.display = 'flex';
+        elements.authButton.style.opacity = '1';
+        elements.authButton.style.transform = 'translateY(0)';
+        elements.authButton.style.transition = '';
+        
+        elements.socialAuthButtons.style.display = 'none';
+        elements.socialAuthButtons.style.opacity = '1';
+        elements.socialAuthButtons.style.transform = 'translateY(0)';
+        elements.socialAuthButtons.style.transition = '';
+        
+        const buttons = elements.socialAuthButtons.children;
+        Array.from(buttons).forEach(button => {
+            button.style.opacity = '1';
+            button.style.transform = 'scale(1)';
+            button.style.transition = '';
+        });
+    }
+
+    handleSocialAuth(provider) {
+        console.log(`Social auth with ${provider}`);
+        this.showNotification(`Авторизация через ${provider} будет реализована позже`);
+        
+        // Simulate successful login
+        setTimeout(() => {
+            AppState.userLoggedIn = true;
+            this.showNotification('Успешная авторизация!');
+            this.hideSocialAuthButtons();
+            
+            // Update UI for logged in state
+            elements.authButton.innerHTML = `
+                <div class="auth-main-text">Профиль</div>
+                <div class="auth-sub-text">Вы вошли в систему</div>
+            `;
+            elements.authButton.style.background = 'linear-gradient(135deg, #00ff88, #00ccff)';
+        }, 1000);
+    }
+
+    selectPlan(card) {
+        // Remove selection from all cards
+        elements.planCards.forEach(c => {
+            c.classList.remove('selected');
+            c.style.transform = '';
+        });
+        
+        // Add selection to clicked card
+        card.classList.add('selected');
+        card.style.transform = 'scale(1.08)';
+        
+        // Store selected plan
+        AppState.selectedPlan = {
+            plan: card.dataset.plan,
+            price: card.dataset.price,
+            duration: card.querySelector('.plan-duration').textContent
+        };
+        
+        console.log('Selected plan:', AppState.selectedPlan);
+    }
+
+    resetPlanSelection() {
+        elements.planCards.forEach(card => {
+            card.classList.remove('selected');
+            card.style.transform = '';
+        });
+        AppState.selectedPlan = null;
+    }
+
+    showPaymentMethods() {
+        if (!AppState.selectedPlan) {
+            this.showNotification('Пожалуйста, сначала выберите план подписки');
+            return;
+        }
+        
+        elements.payButton.style.display = 'none';
+        elements.paymentMethods.style.display = 'flex';
+        
+        // Animate payment methods
+        const methods = elements.paymentMethods.children;
+        Array.from(methods).forEach((method, index) => {
+            method.style.opacity = '0';
+            method.style.transform = 'translateX(20px)';
+            
+            setTimeout(() => {
+                method.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                method.style.opacity = '1';
+                method.style.transform = 'translateX(0)';
+            }, index * 100);
+        });
+    }
+
+    processPayment(method) {
+        if (!AppState.selectedPlan) return;
+        
+        const paymentData = {
+            method: method,
+            plan: AppState.selectedPlan.plan,
+            amount: AppState.selectedPlan.price,
+            timestamp: new Date().toISOString(),
+            status: 'pending'
+        };
+        
+        console.log('Processing payment:', paymentData);
+        
+        // Simulate payment processing
+        this.showPaymentProcessing(method);
+    }
+
+    showPaymentProcessing(method) {
+        let message = '';
+        let redirectUrl = '#';
+        
+        switch(method) {
+            case 'sber':
+                message = 'Перенаправление в СберБанк Онлайн...';
+                redirectUrl = 'sberbank://payment';
+                break;
+            case 'card':
+                message = 'Открытие формы оплаты картой...';
+                break;
+            case 'sbp':
+                message = 'Генерация QR-кода для СБП...';
+                break;
+        }
+        
+        this.showNotification(message);
+        
+        // Simulate redirect after delay
+        setTimeout(() => {
+            if (method === 'sber' || method === 'sbp') {
+                this.showNotification('Оплата успешна! Подписка активирована.');
+                AppState.userSubscribed = true;
+                elements.subscribeBtn.textContent = 'Продлить подписку';
+                this.closeSubscriptionMenu();
+            }
+        }, 2000);
+    }
+
+    showPaymentManagement() {
+        this.showNotification('Система управления оплатой откроется здесь');
+    }
+
+    showTransactions() {
+        this.showNotification('История транзакций будет отображена здесь');
+    }
+
+    showReferralProgram() {
+        this.showNotification('Интерфейс реферальной программы откроется здесь');
+    }
+
+    openTelegramSupport() {
+        window.open('https://t.me/EDEM_CR', '_blank');
+    }
 
     showNotification(message) {
         // Create notification element
@@ -335,87 +563,7 @@ class TerminalBoot {
             top: 20px;
             left: 50%;
             transform: translateX(-50%) translateY(-20px);
-            background: rgba(25, 25, 25, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 12px 20px;
-            color: white;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 10000;
-            opacity: 0;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Animate in
-        setTimeout(() => {
-            notification.style.opacity = '1';
-            notification.style.transform = 'translateX(-50%) translateY(0)';
-        }, 10);
-        
-        // Remove after delay
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(-50%) translateY(-20px)';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
-
-    setupMobileGestures() {
-        // ... существующий код без изменений ...
-    }
-}
-
-// Initialize application when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Проверяем, не было ли уже загружено приложение
-    if (!document.querySelector('.terminal-screen')) {
-        console.error('Terminal screen not found!');
-        return;
-    }
-    
-    const app = new TerminalBoot();
-    
-    // Добавляем таймаут на случай полной загрузки
-    const loadTimeout = setTimeout(() => {
-        console.warn('Forcing app load after timeout');
-        app.skipBootSequence();
-    }, 10000); // 10 секунд максимум
-    
-    app.start().then(() => {
-        clearTimeout(loadTimeout);
-    }).catch((error) => {
-        console.error('App initialization error:', error);
-        clearTimeout(loadTimeout);
-        app.skipBootSequence();
-    });
-    
-    // Handle viewport height on mobile
-    const setVH = () => {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-    
-    setVH();
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', setVH);
-});
-
-// Экспорт для отладки
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { AppState, TerminalBoot };
-}
-
-// Глобальные обработчики для Google Sign-In
-window.handleGoogleSignIn = (response) => {
-    console.log('Google Sign-In successful:', response);
-    // Здесь будет обработка ответа от Google
-};
-
-window.handleGoogleError = (error) => {
-    console.error('Google Sign-In failed:', error);
-};
+            background: rgba(25, 25, 25, 0.98);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+     
