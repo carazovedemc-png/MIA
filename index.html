@@ -6,24 +6,24 @@
     <title>MIA AI Assistant</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <!-- Google Sign-In API -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+    <!-- Audio Element for Typewriter Sound -->
+    <audio id="typeSound" src="https://assets.mixkit.co/sfx/preview/mixkit-typing-script-fast-keystrokes-2549.mp3" preload="auto"></audio>
+    
     <!-- Terminal Loading Screen -->
     <div class="terminal-screen" id="terminalScreen">
         <div id="terminalContent"></div>
-        <!-- Кнопка скипа анимации (внизу) -->
-        <button class="skip-button" id="skipButton">
-            Пропустить загрузку <i class="fas fa-forward"></i>
-        </button>
     </div>
 
     <!-- Main Application -->
     <div class="main-app" id="mainApp">
-        <div class="gradient-bg">
-            <div class="gradient-circle"></div>
-            <div class="gradient-circle"></div>
+        <!-- Animated Gradient Background -->
+        <div class="gradient-background">
+            <div class="gradient-layer gradient-layer-1"></div>
+            <div class="gradient-layer gradient-layer-2"></div>
+            <div class="gradient-layer gradient-layer-3"></div>
+            <div class="gradient-layer gradient-layer-4"></div>
         </div>
         
         <div class="main-content fade-in">
@@ -31,52 +31,56 @@
                 <h1>MIA</h1>
                 <p class="ai-subtitle">ai assistant</p>
             </div>
-            
-            <!-- Google Sign-In Button -->
-            <div id="googleSignIn" class="google-signin-container">
-                <div id="g_id_onload"
-                    data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-                    data-context="signin"
-                    data-ux_mode="popup"
-                    data-login_uri="https://your-backend.com/auth/google"
-                    data-auto_prompt="false">
-                </div>
-                <div class="g_id_signin"
-                    data-type="standard"
-                    data-shape="rectangular"
-                    data-theme="filled_blue"
-                    data-text="signin_with"
-                    data-size="large"
-                    data-logo_alignment="left"
-                    data-width="300">
-                </div>
-                <p class="google-signin-note">Или войдите через Telegram</p>
-                <a href="https://t.me/EDEM_CR" target="_blank" class="telegram-auth-btn">
-                    <i class="fab fa-telegram"></i> Войти через Telegram
-                </a>
-            </div>
         </div>
 
         <!-- Bottom Navigation -->
         <div class="bottom-nav fade-in">
+            <!-- Settings Button -->
             <button class="btn-circle" id="settingsBtn">
                 <i class="fas fa-cog"></i>
             </button>
+
+            <!-- Subscribe Button -->
             <a href="#" class="btn-pill" id="subscribeBtn">
                 Подписаться
             </a>
+
+            <!-- Support Button -->
             <button class="btn-circle" id="supportBtn">
                 <i class="fas fa-comment"></i>
             </button>
         </div>
 
-        <!-- ... остальные меню (settingsMenu, subscriptionMenu, supportMenu) остаются без изменений ... -->
         <!-- Settings Menu -->
         <div class="menu-overlay" id="settingsMenu">
             <button class="close-menu" id="closeSettingsMenu">
                 <i class="fas fa-times"></i>
             </button>
             <div class="menu-content slide-up">
+                <!-- Auth Section (shown when not logged in) -->
+                <div class="auth-section" id="authSection">
+                    <button class="auth-button" id="authButton">
+                        <div class="auth-main-text">Войти</div>
+                        <div class="auth-sub-text">или зарегистрироваться</div>
+                    </button>
+                    
+                    <div class="social-auth-buttons" id="socialAuthButtons" style="display: none;">
+                        <button class="social-auth-btn google-btn" id="googleAuth">
+                            <i class="fab fa-google"></i>
+                        </button>
+                        <button class="social-auth-btn telegram-btn" id="telegramAuth">
+                            <i class="fab fa-telegram"></i>
+                        </button>
+                        <button class="social-auth-btn mia-btn" id="miaAuth">
+                            <span>MIA ID</span>
+                        </button>
+                        <button class="social-auth-btn vk-btn" id="vkAuth">
+                            <i class="fab fa-vk"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Menu Items -->
                 <a href="#" class="menu-item" id="paymentItem">
                     <i class="fas fa-credit-card"></i> Оплата
                 </a>
