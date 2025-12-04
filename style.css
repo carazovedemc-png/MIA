@@ -937,4 +937,39 @@ body, html {
 .terminal-screen::-webkit-scrollbar,
 #terminalContent::-webkit-scrollbar {
     width: 0;
-    backgr
+    background: transparent;
+}
+
+/* Loading animation for terminal */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.terminal-line:last-child::after {
+    content: '_';
+    animation: blink 1s infinite;
+}
+
+/* Scrollbar styling for menu content */
+.menu-content::-webkit-scrollbar,
+.subscription-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.menu-content::-webkit-scrollbar-track,
+.subscription-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+.menu-content::-webkit-scrollbar-thumb,
+.subscription-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 0, 100, 0.5);
+    border-radius: 2px;
+}
+
+.menu-content::-webkit-scrollbar-thumb:hover,
+.subscription-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 0, 100, 0.7);
+}
