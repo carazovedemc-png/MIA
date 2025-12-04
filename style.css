@@ -39,31 +39,6 @@ body {
     pointer-events: none;
 }
 
-.skip-terminal {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s;
-    z-index: 1001;
-}
-
-.skip-terminal:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: scale(1.1);
-}
-
 #terminalContent {
     flex: 1;
     overflow-y: auto;
@@ -79,6 +54,51 @@ body {
 
 @keyframes type {
     to { opacity: 1; }
+}
+
+/* Кнопка скипа анимации (внизу) */
+.skip-button {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 25px;
+    padding: 12px 25px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: fadeInUp 0.5s ease 1s forwards;
+    opacity: 0;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+}
+
+.skip-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2);
+}
+
+.skip-button i {
+    font-size: 14px;
 }
 
 /* Main App Screen */
@@ -185,6 +205,89 @@ body {
     letter-spacing: 2px;
     text-transform: lowercase;
     margin-top: -5px;
+}
+
+/* Google Sign-In Container */
+.google-signin-container {
+    margin-top: 40px;
+    text-align: center;
+    animation: slideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0;
+    transform: translateY(30px);
+    animation-delay: 0.5s;
+    max-width: 350px;
+}
+
+.google-signin-note {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    margin: 20px 0;
+    padding: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Кнопка Telegram авторизации */
+.telegram-auth-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #0088cc, #34b7f1);
+    border: none;
+    border-radius: 12px;
+    padding: 15px 25px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.telegram-auth-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 136, 204, 0.4);
+    background: linear-gradient(135deg, #0077b5, #2aa8e0);
+}
+
+.telegram-auth-btn i {
+    font-size: 20px;
+}
+
+/* Добавляем fallback для черного экрана */
+.loading-fallback {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top-color: #ff0066;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-fallback p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
 }
 
 /* Liquid Glass Buttons */
@@ -692,14 +795,6 @@ body {
         width: 40px;
         height: 40px;
         font-size: 18px;
-    }
-    
-    .skip-terminal {
-        top: 15px;
-        right: 15px;
-        width: 35px;
-        height: 35px;
-        font-size: 14px;
     }
 }
 
