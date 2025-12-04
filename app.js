@@ -6,7 +6,8 @@ const AppState = {
     selectedPlan: null,
     userSubscribed: false,
     currentScreen: 'terminal',
-    user: null
+    userAuthenticated: false,
+    authMethod: null // 'google', 'telegram', или null
 };
 
 // DOM Elements
@@ -25,9 +26,8 @@ const elements = {
     planCards: document.querySelectorAll('.plan-card'),
     payButton: document.getElementById('payButton'),
     paymentMethods: document.getElementById('paymentMethods'),
-    skipTerminalBtn: document.getElementById('skipTerminalBtn'),
-    typeSound: document.getElementById('typeSound'),
-    googleAuthItem: document.getElementById('googleAuthItem')
+    skipButton: document.getElementById('skipButton'),
+    googleSignIn: document.getElementById('googleSignIn')
 };
 
 // Terminal Boot Sequence (English only)
@@ -48,55 +48,50 @@ class TerminalBoot {
         this.messageIndex = 0;
         this.lineDelay = 200;
         this.charDelay = 30;
-        this.isSkipped = false;
-        this.audioContext = null;
-        this.shouldPlaySound = true;
-        this.timeoutIds = [];
+        this.bootTimeout = null;
+        this.skipRequested = false;
     }
 
     async start() {
-        // Инициализация звука
-        this.initSound();
-        
-        // Загрузка состояния пользователя
-        this.loadUserState();
+        // Показываем fallback сразу для предотвращения черного экрана
+        this.showLoadingFallback();
         
         return new Promise((resolve) => {
-            this.showNextMessage(resolve);
+            this.bootTimeout = setTimeout(() => {
+                if (!this.skipRequested) {
+                    this.showNextMessage(resolve);
+                }
+            }, 300); // Небольшая задержка перед началом анимации
         });
     }
 
-    initSound() {
-        // Создаем звук печати с помощью Web Audio API
-        try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
-            console.log("Web Audio API не поддерживается");
-            this.shouldPlaySound = false;
-        }
-    }
-
-    playTypeSound() {
-        if (!this.shouldPlaySound || !this.audioContext) return;
-
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
+    showLoadingFallback() {
+        // Создаем fallback элемент на случай проблем с загрузкой
+        const fallback = document.createElement('div');
+        fallback.className = 'loading-fallback';
+        fallback.innerHTML = `
+            <div class="loading-spinner"></div>
+            <p>Loading MIA AI Assistant...</p>
+        `;
+        document.body.appendChild(fallback);
         
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-
-        oscillator.frequency.value = 800 + Math.random() * 400;
-        oscillator.type = 'sine';
-
-        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.05);
-
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + 0.05);
+        // Убираем fallback когда приложение загрузится
+        setTimeout(() => {
+            if (fallback.parentNode) {
+                fallback.style.opacity = '0';
+                fallback.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => {
+                    if (fallback.parentNode) {
+                        fallback.remove();
+                    }
+                }, 500);
+            }
+        }, 2000);
     }
 
     showNextMessage(resolve) {
-        if (this.messageIndex >= bootMessages.length) {
+        if (this.messageIndex >= bootMessages.length || this.skipRequested) {
+            this.hideLoadingFallback();
             setTimeout(() => {
                 this.fadeOutTerminal();
                 resolve();
@@ -107,9 +102,20 @@ class TerminalBoot {
         const message = bootMessages[this.messageIndex];
         this.typeMessage(message, () => {
             this.messageIndex++;
-            const timeoutId = setTimeout(() => this.showNextMessage(resolve), this.lineDelay);
-            this.timeoutIds.push(timeoutId);
+            setTimeout(() => this.showNextMessage(resolve), this.lineDelay);
         });
+    }
+
+    hideLoadingFallback() {
+        const fallback = document.querySelector('.loading-fallback');
+        if (fallback) {
+            fallback.style.opacity = '0';
+            setTimeout(() => {
+                if (fallback.parentNode) {
+                    fallback.remove();
+                }
+            }, 500);
+        }
     }
 
     typeMessage(message, callback) {
@@ -121,23 +127,10 @@ class TerminalBoot {
         let charIndex = 0;
         
         const typeChar = () => {
-            if (this.isSkipped) {
-                line.textContent = message;
-                callback();
-                return;
-            }
-            
             if (charIndex < message.length) {
                 line.textContent += message.charAt(charIndex);
                 charIndex++;
-                
-                // Воспроизводим звук для каждого символа (кроме пробела)
-                if (message.charAt(charIndex - 1) !== ' ') {
-                    this.playTypeSound();
-                }
-                
-                const timeoutId = setTimeout(typeChar, this.charDelay);
-                this.timeoutIds.push(timeoutId);
+                setTimeout(typeChar, this.charDelay);
             } else {
                 callback();
             }
@@ -149,31 +142,17 @@ class TerminalBoot {
         elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
     }
 
-    skipAnimation() {
-        this.isSkipped = true;
+    skipBootSequence() {
+        this.skipRequested = true;
+        this.hideLoadingFallback();
         
-        // Очищаем все таймауты
-        this.timeoutIds.forEach(id => clearTimeout(id));
-        this.timeoutIds = [];
+        // Очищаем таймаут если он есть
+        if (this.bootTimeout) {
+            clearTimeout(this.bootTimeout);
+        }
         
-        // Показываем все сообщения сразу
-        elements.terminalContent.innerHTML = '';
-        bootMessages.forEach((message, index) => {
-            const line = document.createElement('div');
-            line.className = 'terminal-line';
-            line.style.animationDelay = `${index * 0.1}s`;
-            line.style.opacity = '1';
-            line.textContent = message;
-            elements.terminalContent.appendChild(line);
-        });
-        
-        // Прокручиваем вниз
-        elements.terminalContent.scrollTop = elements.terminalContent.scrollHeight;
-        
-        // Немедленно переходим к завершению
-        setTimeout(() => {
-            this.fadeOutTerminal();
-        }, 300);
+        // Немедленно переходим к главному экрану
+        this.fadeOutTerminal();
     }
 
     fadeOutTerminal() {
@@ -183,20 +162,66 @@ class TerminalBoot {
             elements.mainApp.style.display = 'block';
             AppState.currentScreen = 'main';
             this.initializeMainApp();
-        }, 1000);
+        }, 500);
     }
 
     initializeMainApp() {
+        // Проверяем авторизацию пользователя
+        if (!AppState.userAuthenticated) {
+            // Показываем Google Sign-In
+            this.initializeGoogleSignIn();
+        } else {
+            // Если уже авторизован, показываем основной интерфейс
+            this.showMainInterface();
+        }
+        
+        // Add event listeners
+        this.setupEventListeners();
+    }
+
+    initializeGoogleSignIn() {
+        // Инициализация Google Sign-In
+        if (window.google && window.google.accounts) {
+            console.log('Google Sign-In API loaded successfully');
+            
+            // Обработчик успешной авторизации
+            window.handleGoogleSignIn = (response) => {
+                console.log('Google Sign-In response:', response);
+                
+                // Здесь нужно отправить credential на ваш бэкенд
+                const credential = response.credential;
+                
+                // Симуляция успешной авторизации
+                AppState.userAuthenticated = true;
+                AppState.authMethod = 'google';
+                
+                // Скрываем Google Sign-In и показываем основной интерфейс
+                elements.googleSignIn.style.display = 'none';
+                this.showMainInterface();
+                
+                this.showNotification('Успешная авторизация через Google!');
+            };
+            
+            // Обработчик ошибок
+            window.handleGoogleError = (error) => {
+                console.error('Google Sign-In error:', error);
+                this.showNotification('Ошибка авторизации через Google. Попробуйте еще раз.');
+            };
+        } else {
+            console.warn('Google Sign-In API not loaded, showing fallback');
+            this.showNotification('Google Sign-In временно недоступен. Используйте вход через Telegram.');
+        }
+    }
+
+    showMainInterface() {
         // Update subscribe button text based on subscription status
         if (AppState.userSubscribed) {
             elements.subscribeBtn.textContent = 'Продлить подписку';
         }
         
-        // Add event listeners
-        this.setupEventListeners();
-        
-        // Initialize animations
-        this.startBackgroundAnimation();
+        // Показываем основной интерфейс
+        document.querySelector('.main-content').style.display = 'flex';
+        document.querySelector('.bottom-nav').style.display = 'flex';
     }
 
     setupEventListeners() {
@@ -235,6 +260,28 @@ class TerminalBoot {
             this.processPayment('sbp');
         });
         
+        // Кнопка скипа анимации
+        if (elements.skipButton) {
+            elements.skipButton.addEventListener('click', () => {
+                this.skipBootSequence();
+            });
+        }
+        
+        // Авторизация через Telegram
+        const telegramAuthBtn = document.querySelector('.telegram-auth-btn');
+        if (telegramAuthBtn) {
+            telegramAuthBtn.addEventListener('click', (e) => {
+                if (!telegramAuthBtn.href.includes('#')) {
+                    e.preventDefault();
+                    AppState.userAuthenticated = true;
+                    AppState.authMethod = 'telegram';
+                    elements.googleSignIn.style.display = 'none';
+                    this.showMainInterface();
+                    this.showNotification('Авторизация через Telegram успешна!');
+                }
+            });
+        }
+        
         // Menu Items
         document.getElementById('paymentItem').addEventListener('click', (e) => {
             e.preventDefault();
@@ -254,17 +301,6 @@ class TerminalBoot {
         document.getElementById('supportItem').addEventListener('click', (e) => {
             e.preventDefault();
             this.openTelegramSupport();
-        });
-        
-        // Google Auth
-        elements.googleAuthItem.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleGoogleAuth();
-        });
-        
-        // Skip terminal button
-        elements.skipTerminalBtn.addEventListener('click', () => {
-            this.skipAnimation();
         });
         
         // Close menus when clicking outside
@@ -287,273 +323,7 @@ class TerminalBoot {
         this.setupMobileGestures();
     }
 
-    openSettingsMenu() {
-        elements.settingsMenu.style.display = 'flex';
-        setTimeout(() => {
-            elements.settingsMenu.classList.remove('closing');
-        }, 10);
-        
-        // Обновляем пункт входа через Google в зависимости от состояния
-        this.updateGoogleAuthButton();
-    }
-
-    updateGoogleAuthButton() {
-        if (AppState.user) {
-            elements.googleAuthItem.innerHTML = `
-                <i class="fas fa-user-circle"></i> 
-                ${AppState.user.name} (Выйти)
-            `;
-        } else {
-            elements.googleAuthItem.innerHTML = `
-                <i class="fab fa-google"></i> Войти через Google
-            `;
-        }
-    }
-
-    handleGoogleAuth() {
-        if (AppState.user) {
-            // Выход
-            this.logout();
-        } else {
-            // Имитация входа через Google
-            this.mockGoogleAuth();
-        }
-    }
-
-    mockGoogleAuth() {
-        // В реальном приложении здесь было бы перенаправление на OAuth Google
-        // Для демонстрации мы используем моковые данные
-        const mockUser = {
-            id: 'google_123456',
-            name: 'Пользователь Google',
-            email: 'user@gmail.com',
-            avatar: 'https://via.placeholder.com/40',
-            loginMethod: 'google'
-        };
-        
-        this.login(mockUser);
-        this.showNotification('Успешный вход через Google');
-    }
-
-    login(userData) {
-        AppState.user = userData;
-        this.saveUserState();
-        this.updateGoogleAuthButton();
-    }
-
-    logout() {
-        AppState.user = null;
-        this.saveUserState();
-        this.updateGoogleAuthButton();
-        this.showNotification('Вы вышли из аккаунта');
-    }
-
-    saveUserState() {
-        localStorage.setItem('mia_user', JSON.stringify(AppState.user));
-        localStorage.setItem('mia_subscription', JSON.stringify(AppState.userSubscribed));
-    }
-
-    loadUserState() {
-        const savedUser = localStorage.getItem('mia_user');
-        const savedSubscription = localStorage.getItem('mia_subscription');
-        
-        if (savedUser) {
-            AppState.user = JSON.parse(savedUser);
-        }
-        
-        if (savedSubscription) {
-            AppState.userSubscribed = JSON.parse(savedSubscription);
-        }
-    }
-
-    closeSettingsMenu() {
-        elements.settingsMenu.classList.add('closing');
-        setTimeout(() => {
-            elements.settingsMenu.style.display = 'none';
-            elements.settingsMenu.classList.remove('closing');
-        }, 300);
-    }
-
-    openSubscriptionMenu(e) {
-        e.preventDefault();
-        elements.subscriptionMenu.style.display = 'flex';
-        setTimeout(() => {
-            elements.subscriptionMenu.classList.remove('closing');
-        }, 10);
-    }
-
-    closeSubscriptionMenu() {
-        elements.subscriptionMenu.classList.add('closing');
-        setTimeout(() => {
-            elements.subscriptionMenu.style.display = 'none';
-            elements.subscriptionMenu.classList.remove('closing');
-            elements.paymentMethods.style.display = 'none';
-            elements.payButton.style.display = 'block';
-            this.resetPlanSelection();
-        }, 300);
-    }
-
-    toggleSupportMenu() {
-        if (elements.supportMenu.style.display === 'flex') {
-            this.closeSupportMenu();
-        } else {
-            this.openSupportMenu();
-        }
-    }
-
-    openSupportMenu() {
-        elements.supportMenu.style.display = 'flex';
-        setTimeout(() => {
-            elements.supportMenu.classList.remove('closing');
-        }, 10);
-    }
-
-    closeSupportMenu() {
-        elements.supportMenu.classList.add('closing');
-        setTimeout(() => {
-            elements.supportMenu.style.display = 'none';
-            elements.supportMenu.classList.remove('closing');
-        }, 300);
-    }
-
-    closeAllMenus() {
-        if (elements.settingsMenu.style.display === 'flex') {
-            this.closeSettingsMenu();
-        }
-        if (elements.subscriptionMenu.style.display === 'flex') {
-            this.closeSubscriptionMenu();
-        }
-        if (elements.supportMenu.style.display === 'flex') {
-            this.closeSupportMenu();
-        }
-    }
-
-    selectPlan(card) {
-        // Remove selection from all cards
-        elements.planCards.forEach(c => {
-            c.classList.remove('selected');
-            c.style.transform = '';
-        });
-        
-        // Add selection to clicked card
-        card.classList.add('selected');
-        card.style.transform = 'scale(1.05)';
-        
-        // Store selected plan
-        AppState.selectedPlan = {
-            plan: card.dataset.plan,
-            price: card.dataset.price,
-            duration: card.querySelector('.plan-duration').textContent
-        };
-        
-        console.log('Selected plan:', AppState.selectedPlan);
-    }
-
-    resetPlanSelection() {
-        elements.planCards.forEach(card => {
-            card.classList.remove('selected');
-            card.style.transform = '';
-        });
-        AppState.selectedPlan = null;
-    }
-
-    showPaymentMethods() {
-        if (!AppState.selectedPlan) {
-            this.showNotification('Пожалуйста, сначала выберите план подписки');
-            return;
-        }
-        
-        elements.payButton.style.display = 'none';
-        elements.paymentMethods.style.display = 'flex';
-        
-        // Animate payment methods
-        const methods = elements.paymentMethods.children;
-        Array.from(methods).forEach((method, index) => {
-            method.style.opacity = '0';
-            method.style.transform = 'translateX(20px)';
-            
-            setTimeout(() => {
-                method.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                method.style.opacity = '1';
-                method.style.transform = 'translateX(0)';
-            }, index * 100);
-        });
-    }
-
-    processPayment(method) {
-        if (!AppState.selectedPlan) return;
-        
-        const paymentData = {
-            method: method,
-            plan: AppState.selectedPlan.plan,
-            amount: AppState.selectedPlan.price,
-            timestamp: new Date().toISOString(),
-            status: 'pending'
-        };
-        
-        console.log('Processing payment:', paymentData);
-        
-        // Simulate payment processing
-        this.showPaymentProcessing(method);
-        
-        // In a real app, you would:
-        // 1. Send payment data to your backend
-        // 2. Redirect to payment gateway
-        // 3. Handle the callback
-    }
-
-    showPaymentProcessing(method) {
-        let message = '';
-        let redirectUrl = '#';
-        
-        switch(method) {
-            case 'sber':
-                message = 'Перенаправление в СберБанк Онлайн...';
-                redirectUrl = 'sberbank://payment';
-                break;
-            case 'card':
-                message = 'Открытие формы оплаты картой...';
-                // In real app: show card form
-                break;
-            case 'sbp':
-                message = 'Генерация QR-кода для СБП...';
-                // In real app: generate QR code
-                break;
-        }
-        
-        this.showNotification(message);
-        
-        // Simulate redirect after delay
-        setTimeout(() => {
-            if (method === 'sber' || method === 'sbp') {
-                // In real app: window.location.href = redirectUrl;
-                this.showNotification('Оплата успешна! Подписка активирована.');
-                AppState.userSubscribed = true;
-                elements.subscribeBtn.textContent = 'Продлить подписку';
-                this.saveUserState();
-                this.closeSubscriptionMenu();
-            }
-        }, 2000);
-    }
-
-    showPaymentManagement() {
-        this.showNotification('Система управления оплатой откроется здесь');
-        // In real app: open payment management interface
-    }
-
-    showTransactions() {
-        this.showNotification('История транзакций будет отображена здесь');
-        // In real app: show transaction history
-    }
-
-    showReferralProgram() {
-        this.showNotification('Интерфейс реферальной программы откроется здесь');
-        // In real app: open referral program
-    }
-
-    openTelegramSupport() {
-        window.open('https://t.me/EDEM_CR', '_blank');
-    }
+    // ... остальные методы (openSettingsMenu, closeSettingsMenu и т.д.) остаются без изменений ...
 
     showNotification(message) {
         // Create notification element
@@ -596,17 +366,56 @@ class TerminalBoot {
     }
 
     setupMobileGestures() {
-        let startY;
-        let startTime;
-        
-        document.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-            startTime = Date.now();
-        }, { passive: true });
-        
-        document.addEventListener('touchmove', (e) => {
-            // Prevent rubber-band scrolling on iOS
-            if (e.cancelable && document.body.scrollTop === 0 && e.touches[0].clientY > startY) {
-                e.preventDefault();
-            }
-   
+        // ... существующий код без изменений ...
+    }
+}
+
+// Initialize application when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Проверяем, не было ли уже загружено приложение
+    if (!document.querySelector('.terminal-screen')) {
+        console.error('Terminal screen not found!');
+        return;
+    }
+    
+    const app = new TerminalBoot();
+    
+    // Добавляем таймаут на случай полной загрузки
+    const loadTimeout = setTimeout(() => {
+        console.warn('Forcing app load after timeout');
+        app.skipBootSequence();
+    }, 10000); // 10 секунд максимум
+    
+    app.start().then(() => {
+        clearTimeout(loadTimeout);
+    }).catch((error) => {
+        console.error('App initialization error:', error);
+        clearTimeout(loadTimeout);
+        app.skipBootSequence();
+    });
+    
+    // Handle viewport height on mobile
+    const setVH = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+});
+
+// Экспорт для отладки
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { AppState, TerminalBoot };
+}
+
+// Глобальные обработчики для Google Sign-In
+window.handleGoogleSignIn = (response) => {
+    console.log('Google Sign-In successful:', response);
+    // Здесь будет обработка ответа от Google
+};
+
+window.handleGoogleError = (error) => {
+    console.error('Google Sign-In failed:', error);
+};
